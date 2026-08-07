@@ -89,7 +89,12 @@ export default function NativeBoxPlayer({
     if (isPlaying) {
       videoRef.current.pause();
     } else {
-      videoRef.current.play();
+      if (isRepeatSentence && hasChecked && checkedStartTime !== null) {
+        if (videoRef.current.currentTime < checkedStartTime - 0.3) {
+          videoRef.current.currentTime = checkedStartTime;
+        }
+      }
+      videoRef.current.play().catch(() => {});
     }
     setIsPlaying(!isPlaying);
   };
@@ -110,11 +115,17 @@ export default function NativeBoxPlayer({
     onTimeUpdate(time);
 
     // 1회 재생 멈춤 로직 (Play once until target end)
-    if (playOnceUntil !== null && time >= playOnceUntil) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-      setPlayOnceUntil(null);
-      return;
+    if (playOnceUntil !== null) {
+      if (hasChecked && checkedStartTime !== null && time < checkedStartTime - 0.3) {
+        videoRef.current.currentTime = checkedStartTime;
+        return;
+      }
+      if (time >= playOnceUntil) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setPlayOnceUntil(null);
+        return;
+      }
     }
 
     // N회 반복 / ∞ 무한 반복 로직
@@ -128,6 +139,13 @@ export default function NativeBoxPlayer({
       } else {
         targetStartTime = 0;
         targetEndTime = duration || (segments && segments.length > 0 ? segments[segments.length - 1].end : 0);
+      }
+
+      // 체크된 시작 시점보다 현재 재생 시간이 이전인 경우( time < targetStartTime - 0.3 )
+      // Electron 비동기 seek 타이밍 문제로 1번 문장이 먼저 재생되는 현상을 완벽히 차단하고 즉시 targetStartTime으로 이동
+      if (hasChecked && targetStartTime !== null && time < targetStartTime - 0.3) {
+        videoRef.current.currentTime = targetStartTime;
+        return;
       }
 
       if (targetEndTime !== null && time >= targetEndTime) {
@@ -170,15 +188,24 @@ export default function NativeBoxPlayer({
       // 체크 선택 있음 ➔ 선택 구간 1회 재생 후 멈춤
       videoRef.current.currentTime = checkedStartTime;
       setPlayOnceUntil(checkedEndTime);
-      onSelectSegment(minCheckedIdx);
+      if (minCheckedIdx !== null && onSelectSegment) onSelectSegment(minCheckedIdx);
     } else {
       // 체크 선택 없음 ➔ 전체 영상 1회 재생 후 멈춤
       const videoTotalEnd = duration || (segments && segments.length > 0 ? segments[segments.length - 1].end : 0);
       videoRef.current.currentTime = 0;
       setPlayOnceUntil(videoTotalEnd);
-      if (segments && segments.length > 0) onSelectSegment(0);
+      if (segments && segments.length > 0 && onSelectSegment) onSelectSegment(0);
     }
-    videoRef.current.play().catch(() => {});
+    const playPromise = videoRef.current.play();
+    if (playPromise && playPromise.then) {
+      playPromise.then(() => {
+        if (videoRef.current && hasChecked && checkedStartTime !== null) {
+          if (videoRef.current.currentTime < checkedStartTime - 0.3) {
+            videoRef.current.currentTime = checkedStartTime;
+          }
+        }
+      }).catch(() => {});
+    }
     setIsPlaying(true);
   };
 
@@ -519,12 +546,19 @@ export default function NativeBoxPlayer({
                     setIsRepeatSentence(nextState);
                     setRepeatCurrentCount(0);
                     if (nextState && videoRef.current) {
-                      if (hasChecked && checkedStartTime !== null) {
-                        videoRef.current.currentTime = checkedStartTime;
-                      } else {
-                        videoRef.current.currentTime = 0;
+                      const targetTime = (hasChecked && checkedStartTime !== null) ? checkedStartTime : 0;
+                      if (hasChecked && minCheckedIdx !== null && onSelectSegment) {
+                        onSelectSegment(minCheckedIdx);
                       }
-                      videoRef.current.play().catch(() => {});
+                      videoRef.current.currentTime = targetTime;
+                      const playPromise = videoRef.current.play();
+                      if (playPromise && playPromise.then) {
+                        playPromise.then(() => {
+                          if (videoRef.current && Math.abs(videoRef.current.currentTime - targetTime) > 0.3) {
+                            videoRef.current.currentTime = targetTime;
+                          }
+                        }).catch(() => {});
+                      }
                       setIsPlaying(true);
                     }
                   }}

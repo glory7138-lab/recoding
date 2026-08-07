@@ -58,7 +58,11 @@
 - **자막 갱신 및 삭제 버퍼 버그 수정**: 영상 삭제/전환 시 이전 자막이 메모리에 남아있던 버그 완전 해결.
 - **무설치 배포 파일 생성**: `dist/NativeBOX_AI_Player.zip` (Node.js 미설치 환경에서도 `NativeBOX_AI_Player.exe` 더블클릭만으로 무설치 포터블 구동).
 
+### 9) Electron EXE 체크 선택 구간 반복 시 1번 문장 선재생 버그 수정
+- **원인 분석**: Electron/Chromium 데스크톱 환경에서 비디오 시작 지점 변경(`currentTime = checkedStartTime`) 시 비동기 media seek 처리 중 `play()`가 호출되면, 첫 1회차에 0초(1번 문장)부터 재생이 이루어지는 현상 확인.
+- **수정 내용**: `NativeBoxPlayer.js` 내 `handleTimeUpdate`, `togglePlay`, `handlePlayOnce` 및 `🔁 반복 실행` 버튼 클릭 시 `time < targetStartTime - 0.3` 조건 판단 세이프가드를 추가하여, 재생 시점이 선택 구간 시작보다 이전일 경우 즉시 `targetStartTime`으로 강제 보정하도록 개선.
+
 ## 3. 검증 결과
 - Next.js 프로덕션 정적 빌드(`npm run build`) 성공 (오류 0건).
-- Electron 포터블 실행 파일 패키징(`npm run dist`) 및 ZIP 압축 완료.
-- GitHub `main` 브랜치 자동 병합 및 Remote Sync 완료.
+- Electron 포터블 실행 파일 패키징(`npm run dist`) 성공 (`dist/NativeBOX_AI_Player-win32-x64`).
+
