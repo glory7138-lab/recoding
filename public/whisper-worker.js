@@ -1,13 +1,50 @@
 // public/whisper-worker.js
 // Web Worker: runs Whisper transcription entirely in the browser, no API key needed
 // Uses @xenova/transformers (Hugging Face Transformers.js)
+// NOTE: Uses fetch+eval instead of importScripts for Electron asar compatibility
 
-importScripts('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js');
+let transformersLoaded = false;
 
-const { pipeline, env } = self.Transformers;
+async function loadTransformersLibrary() {
+  if (transformersLoaded) return;
 
-// Disable remote model check for faster startup after first download
-env.allowLocalModels = false;
+  // Try multiple URL patterns to find transformers.min.js
+  const urls = [
+    'transformers.min.js',
+    '/transformers.min.js',
+    './transformers.min.js',
+  ];
+
+  const errors = [];
+
+  for (const url of urls) {
+    try {
+      self.postMessage({ type: 'PROGRESS', message: `📦 라이브러리 로딩 시도: ${url}`, progress: 2 });
+      const response = await fetch(url);
+      if (!response.ok) {
+        errors.push(`${url}: HTTP ${response.status}`);
+        continue;
+      }
+      const scriptText = await response.text();
+      if (!scriptText || scriptText.length < 1000) {
+        errors.push(`${url}: 파일 크기 비정상 (${scriptText?.length || 0} bytes)`);
+        continue;
+      }
+      // Execute in global scope (equivalent to importScripts but async-safe)
+      (0, eval)(scriptText);
+      transformersLoaded = true;
+      self.postMessage({ type: 'PROGRESS', message: `✅ 라이브러리 로드 성공 (${url})`, progress: 4 });
+      return;
+    } catch (e) {
+      errors.push(`${url}: ${e.message}`);
+    }
+  }
+
+  throw new Error(
+    `AI 라이브러리(transformers.min.js)를 로드할 수 없습니다.\n` +
+    `시도한 경로: ${errors.join(' | ')}`
+  );
+}
 
 let transcriber = null;
 
@@ -16,6 +53,19 @@ self.addEventListener('message', async (event) => {
 
   if (type === 'LOAD_MODEL') {
     try {
+      // Step 1: Load the library
+      await loadTransformersLibrary();
+
+      if (!self.Transformers) {
+        throw new Error('Transformers 라이브러리가 전역에 등록되지 않았습니다. (self.Transformers is undefined)');
+      }
+
+      const { pipeline, env } = self.Transformers;
+
+      // Disable remote model check for faster startup after first download
+      env.allowLocalModels = false;
+
+      // Step 2: Load the whisper model
       const { modelSize } = payload;
       const modelMap = {
         tiny: 'Xenova/whisper-tiny',

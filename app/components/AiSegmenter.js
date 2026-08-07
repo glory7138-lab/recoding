@@ -185,12 +185,34 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
   const [selectedFileName, setSelectedFileName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [logMessages, setLogMessages] = useState([]);
   const [error, setError] = useState('');
   const [showEngineHelp, setShowEngineHelp] = useState(false);
 
   const workerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const timerRef = useRef(null);
+
+  React.useEffect(() => {
+    if (isProcessing) {
+      setElapsedSeconds(0);
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isProcessing]);
+
+  const formatTime = (totalSec) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
 
   const addLog = useCallback((msg) => {
     setLogMessages(prev => [...prev.slice(-30), `[${new Date().toLocaleTimeString()}] ${msg}`]);
@@ -220,6 +242,21 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
     if (file) handleFileChange(file);
   };
 
+  // Auto-load saved API key from localStorage when engine changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedKey = localStorage.getItem(`nativebox_${selectedEngine}_key`) || '';
+      setApiKey(savedKey);
+    }
+  }, [selectedEngine]);
+
+  const handleApiKeyChange = (val) => {
+    setApiKey(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`nativebox_${selectedEngine}_key`, val.trim());
+    }
+  };
+
   // ── OPENAI ENGINE ──
   const runOpenAI = async (audioBlob) => {
     if (!apiKey.trim()) throw new Error('OpenAI API Key를 입력해주세요.');
@@ -234,7 +271,7 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
 
     const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: { Authorization: `Bearer ${apiKey.trim()}` },
       body: formData,
     });
 
@@ -252,33 +289,43 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
   // ── HF ENGINE ──
   const runHuggingFace = async (file) => {
     if (!apiKey.trim()) throw new Error('Hugging Face 토큰을 입력해주세요.');
-    addLog('🚀 Hugging Face Whisper API 호출 중...');
+    addLog('🚀 Hugging Face Whisper Cloud API 호출 중...');
     setProgress(40);
 
     const arrayBuffer = await file.arrayBuffer();
     const res = await fetch(
-      'https://api-inference.huggingface.co/models/openai/whisper-large-v3',
+      'https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo',
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': file.type,
+          Authorization: `Bearer ${apiKey.trim()}`,
+          'Content-Type': 'audio/flac',
         },
         body: arrayBuffer,
       }
     );
 
-    if (!res.ok) throw new Error(`Hugging Face API 오류 (${res.status})`);
+    if (!res.ok) {
+      const errText = await res.text();
+      let msg = `Hugging Face API 오류 (${res.status})`;
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.error) msg = `Hugging Face 오류: ${parsed.error}`;
+      } catch {}
+      throw new Error(msg);
+    }
+
     const data = await res.json();
     setProgress(75);
 
-    // HF returns plain text, split by sentences (basic)
     const fullText = typeof data === 'string' ? data : data.text || '';
+    addLog(`✅ HF 음성 인식 완료! (${fullText.length}자)`);
+
     const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [fullText];
     return sentences.map((s, i) => ({
       text: s.trim(),
-      start: i * 3,
-      end: (i + 1) * 3,
+      start: i * 4,
+      end: (i + 1) * 4,
     }));
   };
 
@@ -287,7 +334,7 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
     return new Promise((resolve, reject) => {
       if (workerRef.current) workerRef.current.terminate();
 
-      const worker = new Worker('/whisper-worker.js');
+      const worker = new Worker(new URL('../workers/whisper.worker.js', import.meta.url));
       workerRef.current = worker;
 
       worker.onmessage = (e) => {
@@ -391,7 +438,9 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
 
       setProgress(100);
       addLog(`🎉 완료! 총 ${segments.length}개 문장 구간 생성. 클릭하여 바로 학습하세요!`);
-      onSegmentsGenerated(segments);
+      const fileUrl = selectedFile ? URL.createObjectURL(selectedFile) : '/sample.mp4';
+      const fileName = selectedFileName || 'intern.mp4';
+      onSegmentsGenerated(segments, fileUrl, fileName);
 
     } catch (err) {
       setError(`오류: ${err.message}`);
@@ -524,7 +573,7 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
               type="password"
               placeholder={selectedEngineInfo.keyPlaceholder}
               value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
+              onChange={e => handleApiKeyChange(e.target.value)}
               style={{
                 width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-color)',
                 color: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 13, fontFamily: 'monospace'
@@ -676,12 +725,17 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
         </span>
       </button>
 
-      {/* Progress Bar */}
+      {/* Progress Bar & Elapsed Time */}
       {isProcessing && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-            <span>처리 중...</span>
-            <span>{progress}%</span>
+        <div style={{ marginTop: 12, padding: '12px 14px', background: 'rgba(59,130,246,0.08)', borderRadius: 10, border: '1px solid rgba(59,130,246,0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#93c5fd', marginBottom: 6, fontWeight: 600 }}>
+            <span>⏱️ 경과 시간: {formatTime(elapsedSeconds)}</span>
+            <span>
+              {progress > 5 && progress < 100
+                ? `⏳ 예상 남은 시간: 약 ${formatTime(Math.max(1, Math.round((elapsedSeconds / Math.max(1, progress)) * (100 - progress))))}`
+                : '🤖 처리 진행 중...'}
+              &nbsp;({progress}%)
+            </span>
           </div>
           <div className="progress-bar-outer">
             <div className="progress-bar-inner" style={{ width: `${progress}%`, transition: 'width 0.5s ease' }} />

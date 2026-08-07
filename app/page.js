@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import NativeBoxPlayer from './components/NativeBoxPlayer';
 import SubtitleScriptViewer from './components/SubtitleScriptViewer';
-import ContentsListModal from './components/ContentsListModal';
+import PlaylistPanel from './components/PlaylistPanel';
 import AiSegmenter from './components/AiSegmenter';
 import SubtitleEditor from './components/SubtitleEditor';
 import ExportModal from './components/ExportModal';
@@ -12,9 +12,7 @@ import GuideModal from './components/GuideModal';
 import { Cpu, ListFilter, Sliders } from 'lucide-react';
 
 export default function Home() {
-  const [videoSrc, setVideoSrc] = useState('/sample.mp4');
-  const [videoTitle, setVideoTitle] = useState('About.Time.2013[1].avi');
-  const [segments, setSegments] = useState([
+  const initialSegments = [
     {
       id: 1,
       start: 8.93,
@@ -55,28 +53,130 @@ export default function Home() {
       translation: "엄마에게는 단호한 면이 있었다. 바쁘고 감정적이지 않았다.",
       memo: "성격 묘사"
     }
+  ];
+
+  const [playlist, setPlaylist] = useState([
+    { id: 'default', name: 'About.Time.2013[1].avi', url: '/sample.mp4', segments: initialSegments }
   ]);
+  const [videoSrc, setVideoSrc] = useState('/sample.mp4');
+  const [videoTitle, setVideoTitle] = useState('About.Time.2013[1].avi');
+  const [segments, setSegments] = useState(initialSegments);
 
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
+  const [seekTrigger, setSeekTrigger] = useState(null);
   const [isRepeatSentence, setIsRepeatSentence] = useState(false);
+  const [checkedIndices, setCheckedIndices] = useState([]);
+
+  const handleSelectSegment = (idx) => {
+    setCurrentSegmentIndex(idx);
+    if (segments[idx]) {
+      setSeekTrigger({ time: segments[idx].start, ts: Date.now() });
+    }
+  };
   const [screenMode, setScreenMode] = useState('normal'); // 'normal' | 'big' | 'full' | 'caption'
   const [captionMode, setCaptionMode] = useState('EK'); // 'X' | 'E' | 'K' | 'EK'
-  const [fontSize, setFontSize] = useState('medium'); // 'small' | 'medium' | 'large'
+  const [fontSize, setFontSizeState] = useState(14); // Font size in pixels (default 14px for 4-item view)
+  const [playerSizePercent, setPlayerSizePercentState] = useState(100); // Player width size % (60%~140%)
+
+  // Load saved font size and player screen size from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedFont = localStorage.getItem('nb_font_size');
+      if (savedFont && !isNaN(Number(savedFont))) {
+        setFontSizeState(Number(savedFont));
+      }
+      const savedPlayerSize = localStorage.getItem('nb_player_size');
+      if (savedPlayerSize && !isNaN(Number(savedPlayerSize))) {
+        setPlayerSizePercentState(Number(savedPlayerSize));
+      }
+    } catch (e) {}
+  }, []);
+
+  const setFontSize = (newSize) => {
+    const val = typeof newSize === 'number' ? newSize : 16;
+    setFontSizeState(val);
+    try {
+      localStorage.setItem('nb_font_size', String(val));
+    } catch (e) {}
+  };
+
+  const setPlayerSizePercent = (newSize) => {
+    const val = typeof newSize === 'number' ? Math.max(60, Math.min(140, newSize)) : 100;
+    setPlayerSizePercentState(val);
+    try {
+      localStorage.setItem('nb_player_size', String(val));
+    } catch (e) {}
+  };
   const [showContentsList, setShowContentsList] = useState(true);
   const [activeTab, setActiveTab] = useState('nativebox'); // 'nativebox' | 'editor' | 'ai'
   const [showExportModal, setShowExportModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  // Drag and Drop media loading
+  // Drag and Drop media loading & auto-load pre-parsed intern.mp4
   useEffect(() => {
     window.onHeaderMediaSelect = (url, name) => {
       handleMediaSelect(url, name);
     };
+
+    fetch('/intern_output.json')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          const internItem = {
+            id: 'intern-mp4',
+            name: 'intern.mp4',
+            url: '/intern.mp4',
+            segments: data
+          };
+          setPlaylist(prev => {
+            const filtered = prev.filter(p => p.name !== 'intern.mp4');
+            return [...filtered, internItem];
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleMediaSelect = (url, fileName) => {
     setVideoSrc(url);
     setVideoTitle(fileName);
+    setPlaylist(prev => {
+      const exists = prev.find(p => p.name === fileName);
+      if (exists) return prev;
+      return [...prev, { id: Date.now(), name: fileName, url, segments: [] }];
+    });
+  };
+
+  const handleSelectPlaylistItem = (item) => {
+    setVideoSrc(item.url);
+    setVideoTitle(item.name);
+    if (item.segments && item.segments.length > 0) {
+      setSegments(item.segments);
+    }
+    setCurrentSegmentIndex(0);
+  };
+
+  const handleAddFileToPlaylist = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*,audio/*';
+    input.onchange = (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        const url = URL.createObjectURL(file);
+        const newItem = { id: Date.now(), name: file.name, url, segments: [] };
+        setPlaylist(prev => [...prev, newItem]);
+        handleSelectPlaylistItem(newItem);
+      }
+    };
+    input.click();
+  };
+
+  const handleDeletePlaylistItem = () => {
+    if (playlist.length <= 1) return;
+    const nextList = playlist.filter(p => p.name !== videoTitle);
+    setPlaylist(nextList);
+    if (nextList[0]) handleSelectPlaylistItem(nextList[0]);
   };
 
   const handleSubtitleSelect = (fileContent, fileName) => {
@@ -169,95 +269,59 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0e1117' }}>
-      {/* App Header */}
+      {/* App Header Toolbar (Always Visible) */}
       <Header
         onExportClick={() => setShowExportModal(true)}
         activeCount={segments.length}
         onMediaSelect={handleMediaSelect}
         onSubtitleSelect={handleSubtitleSelect}
         onOpenGuide={() => setShowGuideModal(true)}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        videoTitle={videoTitle}
       />
 
-      {/* Mode Navigation Bar */}
-      <div style={{
-        background: 'rgba(255,255,255,0.03)',
-        borderBottom: '1px solid var(--border-color)',
-        padding: '6px 24px',
-        fontSize: 13,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button
-            className={`nb-bevel-btn ${activeTab === 'nativebox' ? 'active-green' : ''}`}
-            onClick={() => setActiveTab('nativebox')}
-          >
-            <Sliders size={14} />
-            <span>NativeBOX 레트로 스킨 뷰</span>
-          </button>
-          <button
-            className={`nb-bevel-btn ${activeTab === 'editor' ? 'active-blue' : ''}`}
-            onClick={() => setActiveTab('editor')}
-          >
-            <ListFilter size={14} />
-            <span>타임라인 자막 에디터</span>
-          </button>
-          <button
-            className={`nb-bevel-btn ${activeTab === 'ai' ? 'pressed' : ''}`}
-            onClick={() => setActiveTab('ai')}
-          >
-            <Cpu size={14} color="#a78bfa" />
-            <span>AI 자동 문장 분할기</span>
-          </button>
-        </div>
-
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          현재 파일: <strong style={{ color: '#00ff66' }}>{videoTitle}</strong>
-        </div>
-      </div>
 
       {/* Main Content Body */}
       <main style={{ flex: 1, padding: 16, position: 'relative', overflowX: 'hidden' }}>
         {activeTab === 'nativebox' && (
-          <div className="nativebox-skin">
-            {/* NativeBOX Top Player Frame */}
+          <div className="nativebox-skin" style={{ width: '100%', maxWidth: playerSizePercent >= 100 ? '100%' : `${playerSizePercent}%`, margin: '0 auto', transition: 'max-width 0.2s ease' }}>
             <NativeBoxPlayer
               videoSrc={videoSrc}
               videoTitle={videoTitle}
               segments={segments}
               currentSegmentIndex={currentSegmentIndex}
+              seekTrigger={seekTrigger}
               onTimeUpdate={handleTimeUpdate}
-              onSelectSegment={(idx) => setCurrentSegmentIndex(idx)}
+              onSelectSegment={handleSelectSegment}
               isRepeatSentence={isRepeatSentence}
               setIsRepeatSentence={setIsRepeatSentence}
               screenMode={screenMode}
               setScreenMode={setScreenMode}
+              playerSizePercent={playerSizePercent}
+              setPlayerSizePercent={setPlayerSizePercent}
               captionMode={captionMode}
               setCaptionMode={setCaptionMode}
               fontSize={fontSize}
               setFontSize={setFontSize}
-              showContentsList={showContentsList}
-              onToggleContentsList={() => setShowContentsList(!showContentsList)}
+              playlist={playlist}
+              onSelectPlaylistItem={handleSelectPlaylistItem}
+              onAddFile={handleAddFileToPlaylist}
+              onDeleteFile={handleDeletePlaylistItem}
+              checkedIndices={checkedIndices}
             />
 
-            {/* NativeBOX Bottom Main Script Viewer */}
             <SubtitleScriptViewer
               segments={segments}
               currentSegmentIndex={currentSegmentIndex}
-              onSelectSegment={(idx) => setCurrentSegmentIndex(idx)}
+              onSelectSegment={handleSelectSegment}
               captionMode={captionMode}
               fontSize={fontSize}
+              setFontSize={setFontSize}
+              checkedIndices={checkedIndices}
+              setCheckedIndices={setCheckedIndices}
+              playerSizePercent={playerSizePercent}
             />
-
-            {/* NativeBOX Floating Contents List (Bottom Right) */}
-            {showContentsList && (
-              <ContentsListModal
-                currentFileName={videoTitle}
-                onClose={() => setShowContentsList(false)}
-                onSelectMedia={handleMediaSelect}
-              />
-            )}
           </div>
         )}
 
@@ -266,7 +330,7 @@ export default function Home() {
             <SubtitleEditor
               segments={segments}
               currentSegmentIndex={currentSegmentIndex}
-              onSelectSegment={(idx) => setCurrentSegmentIndex(idx)}
+              onSelectSegment={handleSelectSegment}
               onUpdateSegment={handleUpdateSegment}
               onDeleteSegment={handleDeleteSegment}
               onAddSegment={handleAddSegment}
@@ -278,8 +342,14 @@ export default function Home() {
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             <AiSegmenter
               onMediaLoaded={(url) => setVideoSrc(url)}
-              onSegmentsGenerated={(newSegments) => {
+              onSegmentsGenerated={(newSegments, mediaUrl, mediaFileName) => {
                 setSegments(newSegments);
+                setVideoSrc(mediaUrl);
+                setVideoTitle(mediaFileName);
+                setPlaylist(prev => {
+                  const filtered = prev.filter(p => p.name !== mediaFileName);
+                  return [...filtered, { id: Date.now(), name: mediaFileName, url: mediaUrl, segments: newSegments }];
+                });
                 setCurrentSegmentIndex(0);
                 setActiveTab('nativebox');
               }}

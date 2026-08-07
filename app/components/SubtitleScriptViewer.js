@@ -1,89 +1,250 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 export default function SubtitleScriptViewer({
-  segments,
+  segments = [],
   currentSegmentIndex,
   onSelectSegment,
   captionMode = 'EK',
-  fontSize = 'medium'
+  fontSize = 16,
+  setFontSize,
+  checkedIndices = [],
+  setCheckedIndices,
+  playerSizePercent = 100
 }) {
   const activeRef = useRef(null);
+  const containerRef = useRef(null);
 
-  // Auto-scroll into view when active segment changes
+  // Auto-scroll ONLY INSIDE the script container box (never scroll the main page window!)
   useEffect(() => {
-    if (activeRef.current) {
-      activeRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
+    if (activeRef.current && containerRef.current) {
+      const container = containerRef.current;
+      const item = activeRef.current;
+
+      const itemTop = item.offsetTop - container.offsetTop;
+      const itemHeight = item.offsetHeight;
+      const containerHeight = container.clientHeight;
+
+      const targetScrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
+
+      container.scrollTo({
+        top: Math.max(0, targetScrollTop),
+        behavior: 'smooth'
       });
     }
   }, [currentSegmentIndex]);
 
   const getFontSizePx = () => {
+    if (typeof fontSize === 'number') return `${fontSize}px`;
     switch (fontSize) {
-      case 'small': return '15px';
-      case 'large': return '22px';
-      default: return '18px';
+      case 'small': return '12px';
+      case 'large': return '20px';
+      default: return '14px';
     }
   };
 
-  const jumpPrev = () => {
-    if (currentSegmentIndex > 0) {
-      onSelectSegment(currentSegmentIndex - 1);
-    }
+  const formatSecs = (secs) => {
+    if (!secs || isNaN(secs)) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const jumpNext = () => {
-    if (currentSegmentIndex < segments.length - 1) {
-      onSelectSegment(currentSegmentIndex + 1);
+  // Toggle individual sentence checkbox without playing video
+  const toggleCheckbox = (idx, e) => {
+    e.stopPropagation(); // Stop click from playing video
+    if (!setCheckedIndices) return;
+
+    let nextChecked;
+    if (checkedIndices.includes(idx)) {
+      nextChecked = checkedIndices.filter(i => i !== idx);
+    } else {
+      nextChecked = [...checkedIndices, idx].sort((a, b) => a - b);
+    }
+    setCheckedIndices(nextChecked);
+  };
+
+  // Master Checkbox: Select All / Clear All
+  const isAllChecked = segments.length > 0 && checkedIndices.length === segments.length;
+
+  const toggleMasterCheckbox = (e) => {
+    e.stopPropagation();
+    if (!setCheckedIndices || !segments) return;
+
+    if (isAllChecked) {
+      setCheckedIndices([]);
+    } else {
+      setCheckedIndices(segments.map((_, i) => i));
     }
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', marginTop: 8 }}>
-      {/* Left Large Nav Arrow Button */}
-      <button
-        className="nb-bevel-btn"
-        onClick={jumpPrev}
-        style={{
-          position: 'absolute',
-          left: -20,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 42,
-          height: 42,
-          borderRadius: '50%',
-          zIndex: 10,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
-        }}
-        title="이전 문장"
-      >
-        <ChevronLeft size={24} />
-      </button>
+    <div style={{ position: 'relative', width: '100%', marginTop: 12 }}>
+      
+      {/* 📋 Master Checkbox Top Header Bar with Right-Aligned Font Size Controls */}
+      <div style={{
+        background: '#1e293b',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '12px 12px 0 0',
+        padding: '8px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        justify: 'space-between',
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
+        gap: 10
+      }}>
+        {/* Left: Master Checkbox */}
+        <div
+          onClick={toggleMasterCheckbox}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}
+          title="클릭 시 자막 전체 선택 / 해제"
+        >
+          <input
+            type="checkbox"
+            checked={isAllChecked}
+            onChange={toggleMasterCheckbox}
+            style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 13, color: '#f8fafc' }}>☐ 전체 선택</span>
+          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 4 }}>
+            ({checkedIndices.length} / {segments.length}개 선택됨)
+          </span>
+        </div>
 
-      {/* Main Subtitle Script Container */}
+        {/* Center: Hint */}
+        <div style={{ fontSize: 11, color: '#38bdf8', fontWeight: 'normal' }}>
+          💡 체크 선택 없음 ➔ 우측 [반복] 누르면 "전체 영상" 반복
+        </div>
+
+        {/* Right: Font Size Controls */}
+        {setFontSize && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="자막 글자 크기 미세 조절">
+            <span style={{ fontSize: 11, color: '#94a3b8', marginRight: 2 }}>글자</span>
+            <button
+              className="nb-bevel-btn"
+              style={{ padding: '1px 6px', fontSize: 11, fontWeight: 'bold' }}
+              onClick={() => setFontSize(Math.max(10, (typeof fontSize === 'number' ? fontSize : 14) - 2))}
+              title="글자 크기 축소 (-2px)"
+            >
+              -
+            </button>
+            <span
+              onClick={() => setFontSize(14)}
+              style={{ fontSize: 10, fontWeight: 'bold', color: '#34d399', background: 'rgba(16,185,129,0.15)', padding: '1px 6px', borderRadius: 4, cursor: 'pointer' }}
+              title="기본 14px 복원"
+            >
+              {typeof fontSize === 'number' ? `${fontSize}px` : '14px'}
+            </span>
+            <button
+              className="nb-bevel-btn"
+              style={{ padding: '1px 6px', fontSize: 11, fontWeight: 'bold' }}
+              onClick={() => setFontSize(Math.min(48, (typeof fontSize === 'number' ? fontSize : 14) + 2))}
+              title="글자 크기 확대 (+2px)"
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Main Subtitle Script Container (Sized to fit 4+ items simultaneously) */}
       <div
+        ref={containerRef}
         className="nb-script-container"
-        style={{ fontSize: getFontSizePx(), paddingLeft: 28, paddingRight: 28 }}
+        style={{
+          fontSize: getFontSizePx(),
+          paddingLeft: 16,
+          paddingRight: 16,
+          borderRadius: '0 0 12px 12px',
+          borderTop: 'none',
+          maxHeight: Math.max(220, Math.round(260 * (playerSizePercent / 100)))
+        }}
       >
         {segments && segments.length > 0 ? (
           segments.map((seg, idx) => {
             const isActive = idx === currentSegmentIndex;
+            const isChecked = checkedIndices.includes(idx);
+
             return (
               <div
                 key={seg.id || idx}
                 ref={isActive ? activeRef : null}
                 className={`nb-script-item ${isActive ? 'active-sentence' : ''}`}
-                onClick={() => onSelectSegment(idx)}
+                onClick={() => onSelectSegment(idx)} // Click text area -> Play Video Immediately!
+                style={{
+                  background: isActive ? '#ecfdf5' : isChecked ? '#f0fdf4' : '#f8fafc',
+                  border: isActive
+                    ? '2px solid #10b981'
+                    : isChecked
+                    ? '1px solid #34d399'
+                    : '1px solid #e2e8f0',
+                  boxShadow: isChecked ? '0 2px 8px rgba(16,185,129,0.1)' : 'none'
+                }}
               >
-                <div className="nb-script-icon" />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* 1. CHECKBOX (Clicking checkbox toggles selection WITHOUT playing video) */}
+                <div
+                  onClick={(e) => toggleCheckbox(idx, e)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justify: 'center',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    borderRadius: 4,
+                    flexShrink: 0
+                  }}
+                  title="체크 시 우측 플레이어 반복 버튼으로 선택 문장 묶음 재생"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => toggleCheckbox(idx, e)}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      accentColor: '#10b981',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+
+                {/* 2. Sentence Number & Timestamp Pill */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 2 }}>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: isActive || isChecked ? '#047857' : '#475569',
+                    background: isActive || isChecked ? '#d1fae5' : '#e2e8f0',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    border: `1px solid ${isActive || isChecked ? '#6ee7b7' : '#cbd5e1'}`
+                  }}>
+                    #{String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <span style={{
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    color: isActive || isChecked ? '#059669' : '#64748b',
+                    fontWeight: '600'
+                  }}>
+                    {formatSecs(seg.start)}
+                  </span>
+                </div>
+
+                {/* 3. Subtitle Text Area (Clicking text plays video immediately) */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {/* English Text */}
                   {(captionMode === 'E' || captionMode === 'EK' || captionMode === 'X') && (
-                    <div style={{ color: isActive ? '#0033cc' : '#222', fontWeight: isActive ? 'bold' : 'normal' }}>
+                    <div style={{
+                      color: isActive ? '#0f172a' : '#1e293b',
+                      fontWeight: isActive ? 700 : 500,
+                      fontSize: '1.02em',
+                      lineHeight: 1.5
+                    }}>
                       {seg.text}
                     </div>
                   )}
@@ -91,44 +252,44 @@ export default function SubtitleScriptViewer({
                   {/* Korean Translation */}
                   {(captionMode === 'K' || captionMode === 'EK') && seg.translation && (
                     <div style={{
-                      color: isActive ? '#0066cc' : '#555566',
-                      fontSize: '0.88em',
-                      fontFamily: 'sans-serif',
-                      fontWeight: 'normal'
+                      color: isActive ? '#0284c7' : '#2563eb',
+                      fontSize: '0.94em',
+                      fontWeight: isActive ? 600 : 500,
+                      lineHeight: 1.4
                     }}>
                       {seg.translation}
                     </div>
                   )}
                 </div>
+
+                {/* 4. Active Status Indicator */}
+                {isActive && (
+                  <div style={{
+                    color: '#047857',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: '#d1fae5',
+                    padding: '3px 9px',
+                    borderRadius: 12,
+                    border: '1px solid #6ee7b7',
+                    flexShrink: 0
+                  }}>
+                    <Play size={10} fill="#047857" />
+                    <span>재생 중</span>
+                  </div>
+                )}
               </div>
             );
           })
         ) : (
-          <div style={{ color: '#888', textAlign: 'center', padding: '40px 0' }}>
-            로드된 자막이 없습니다. 영상이나 자막 파일(.srt)을 불러와 주세요.
+          <div style={{ color: '#64748b', textAlign: 'center', padding: 40, fontSize: 13 }}>
+            자막 스크립트 데이터가 없습니다.
           </div>
         )}
       </div>
-
-      {/* Right Large Nav Arrow Button */}
-      <button
-        className="nb-bevel-btn"
-        onClick={jumpNext}
-        style={{
-          position: 'absolute',
-          right: -20,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 42,
-          height: 42,
-          borderRadius: '50%',
-          zIndex: 10,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
-        }}
-        title="다음 문장"
-      >
-        <ChevronRight size={24} />
-      </button>
     </div>
   );
 }
