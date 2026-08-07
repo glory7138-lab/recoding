@@ -65,4 +65,6 @@
 ## 3. 검증 결과
 - Next.js 프로덕션 정적 빌드(`npm run build`) 성공 (오류 0건).
 - Electron 포터블 실행 파일 패키징(`npm run dist`) 성공 (`dist/NativeBOX_AI_Player-win32-x64`).
+- 최신 포터블 무설치 ZIP 생성 완료 (`dist/NativeBOX_AI_Player.zip`).
+
 
