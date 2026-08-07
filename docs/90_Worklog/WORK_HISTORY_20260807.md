@@ -22,6 +22,13 @@
 - `.agents/AGENTS.md` 및 `docs/00_SOT/collaboration-rules.md` 개정.
 - 작업 종료 명령어("마무리 해", "pr 생성해") 실행 시 작업 브랜치 커밋/Push뿐만 아니라 `main` 브랜치 자동 Merge 및 `origin/main` Push를 의무화하여 항상 최신 `main` 브랜치 유지를 보장.
 
+### 4) NativeBOX 클래식 레트로 UI 스킨 및 플레이어 구현
+- `app/globals.css`: 3D 메탈 베젤 스킨, 파란색 문장 하이라이트 CSS 시스템 적용.
+- `app/components/NativeBoxPlayer.js`: NativeBOX 전용 상단 비디오 화면 및 스크린/캡션 조작 패널 구현.
+- `app/components/SubtitleScriptViewer.js`: 하단 대형 문장 스크립트 뷰어 (파란색 문장 하이라이트, 폰트 조절, 대형 이동 화살표) 구현.
+- `app/components/ContentsListModal.js`: 우측 하단 `Contents List` 미니 윈도우 팝업 구현.
+- `app/page.js`: NativeBOX 스킨 레이아웃 메인 뷰 통합.
+
 ## 3. 검증 결과
-- 모든 문서 파일 구성 완료, `main` 브랜치 병합 및 `origin/main` 푸시 완료.
-- local working tree clean 상태 확인.
+- Next.js 프로덕션 빌드(`npm run build`) 오류 없이 100% 성공.
+- 모든 기능 및 문서 `main` 브랜치 병합 후 `origin/main` 푸시 완료.

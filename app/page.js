@@ -2,66 +2,72 @@
 
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
-import MediaPlayer from './components/MediaPlayer';
+import NativeBoxPlayer from './components/NativeBoxPlayer';
+import SubtitleScriptViewer from './components/SubtitleScriptViewer';
+import ContentsListModal from './components/ContentsListModal';
 import AiSegmenter from './components/AiSegmenter';
 import SubtitleEditor from './components/SubtitleEditor';
 import ExportModal from './components/ExportModal';
 import GuideModal from './components/GuideModal';
-import { Cpu, ListFilter } from 'lucide-react';
+import { Cpu, ListFilter, Sliders } from 'lucide-react';
 
 export default function Home() {
   const [videoSrc, setVideoSrc] = useState('/sample.mp4');
-  const [videoTitle, setVideoTitle] = useState('기본 제공 샘플 영상 (sample.mp4)');
+  const [videoTitle, setVideoTitle] = useState('About.Time.2013[1].avi');
   const [segments, setSegments] = useState([
     {
       id: 1,
       start: 8.93,
       end: 11.24,
-      text: "footage never before seen by civilized humanity.",
-      translation: "문명사회에서 한 번도 본 적 없는 영상입니다.",
+      text: "I always knew we were a fairly odd family.",
+      translation: "나는 우리가 꽤 특이한 가족이라는 걸 항상 알고 있었다.",
       memo: "도입 문장"
     },
     {
       id: 2,
       start: 11.25,
       end: 13.10,
-      text: "A lost world in South America,",
-      translation: "남미에 잃어버린 세계가 존재합니다,",
-      memo: "장소 설명"
+      text: "First there was me.",
+      translation: "첫 번째로 내가 있었다.",
+      memo: "인물 소개"
     },
     {
       id: 3,
       start: 13.11,
       end: 15.54,
-      text: "lurking in the shadow of Majestic Paradise Falls",
-      translation: "장엄한 파라다이스 폭포의 그림자 속에 숨어 있습니다.",
-      memo: "lurking = 숨어있는"
+      text: "Too tall. Too skinny. Too orange.",
+      translation: "너무 키가 크고. 너무 말랐고. 너무 주황색 머리였다.",
+      memo: "외모 묘사"
     },
     {
       id: 4,
       start: 15.55,
       end: 18.87,
-      text: "it sports plants and animals undiscovered by science,",
-      translation: "과학계에서 아직 발견되지 않은 동식물들이 무성합니다.",
-      memo: "sports = 갖추다"
+      text: "My mum was lovely, but not like other mums.",
+      translation: "우리 엄마는 사랑스러웠지만, 다른 엄마들과는 달랐다.",
+      memo: "엄마 소개"
     },
     {
       id: 5,
       start: 18.88,
       end: 21.88,
-      text: "Who would dare set foot on this inhospitable summit?",
-      translation: "누가 감히 이 살기 어려운 정상에 발을 디딜 수 있을까요?",
-      memo: "수사학적 질문"
+      text: "There was something solid about her. Some busy and unsentimental.",
+      translation: "엄마에게는 단호한 면이 있었다. 바쁘고 감정적이지 않았다.",
+      memo: "성격 묘사"
     }
   ]);
 
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
   const [isRepeatSentence, setIsRepeatSentence] = useState(false);
-  const [activeTab, setActiveTab] = useState('editor'); // 'editor' | 'ai'
+  const [screenMode, setScreenMode] = useState('normal'); // 'normal' | 'big' | 'full' | 'caption'
+  const [captionMode, setCaptionMode] = useState('EK'); // 'X' | 'E' | 'K' | 'EK'
+  const [fontSize, setFontSize] = useState('medium'); // 'small' | 'medium' | 'large'
+  const [showContentsList, setShowContentsList] = useState(true);
+  const [activeTab, setActiveTab] = useState('nativebox'); // 'nativebox' | 'editor' | 'ai'
   const [showExportModal, setShowExportModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  // Expose global callback for drag and drop media loading
+  // Drag and Drop media loading
   useEffect(() => {
     window.onHeaderMediaSelect = (url, name) => {
       handleMediaSelect(url, name);
@@ -125,7 +131,6 @@ export default function Home() {
     return result;
   };
 
-  // Sync active segment index based on media player current time
   const handleTimeUpdate = (currentTime) => {
     const idx = segments.findIndex((s) => currentTime >= s.start && currentTime <= s.end);
     if (idx !== -1 && idx !== currentSegmentIndex) {
@@ -163,7 +168,8 @@ export default function Home() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0e1117' }}>
+      {/* App Header */}
       <Header
         onExportClick={() => setShowExportModal(true)}
         activeCount={segments.length}
@@ -172,65 +178,91 @@ export default function Home() {
         onOpenGuide={() => setShowGuideModal(true)}
       />
 
-      {/* Video Title Bar */}
+      {/* Mode Navigation Bar */}
       <div style={{
         background: 'rgba(255,255,255,0.03)',
         borderBottom: '1px solid var(--border-color)',
         padding: '6px 24px',
-        fontSize: 12,
-        color: 'var(--text-muted)',
+        fontSize: 13,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <span>현재 재생 중: <strong style={{ color: '#38bdf8' }}>{videoTitle}</strong></span>
-        <span>💡 상단 <strong style={{ color: '#c084fc' }}>[사용 방법]</strong> 버튼을 누르면 언제든지 가이드를 확인하실 수 있습니다.</span>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button
+            className={`nb-bevel-btn ${activeTab === 'nativebox' ? 'active-green' : ''}`}
+            onClick={() => setActiveTab('nativebox')}
+          >
+            <Sliders size={14} />
+            <span>NativeBOX 레트로 스킨 뷰</span>
+          </button>
+          <button
+            className={`nb-bevel-btn ${activeTab === 'editor' ? 'active-blue' : ''}`}
+            onClick={() => setActiveTab('editor')}
+          >
+            <ListFilter size={14} />
+            <span>타임라인 자막 에디터</span>
+          </button>
+          <button
+            className={`nb-bevel-btn ${activeTab === 'ai' ? 'pressed' : ''}`}
+            onClick={() => setActiveTab('ai')}
+          >
+            <Cpu size={14} color="#a78bfa" />
+            <span>AI 자동 문장 분할기</span>
+          </button>
+        </div>
+
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          현재 파일: <strong style={{ color: '#00ff66' }}>{videoTitle}</strong>
+        </div>
       </div>
 
-      <main className="main-container">
-        {/* Left Side: Media Player & Live Overlay */}
-        <MediaPlayer
-          videoSrc={videoSrc}
-          segments={segments}
-          currentSegmentIndex={currentSegmentIndex}
-          onTimeUpdate={handleTimeUpdate}
-          onSelectSegment={(idx) => setCurrentSegmentIndex(idx)}
-          isRepeatSentence={isRepeatSentence}
-          setIsRepeatSentence={setIsRepeatSentence}
-        />
-
-        {/* Right Side: AI Segmenter & Subtitle Editor */}
-        <div className="right-panel">
-          {/* Navigation Tabs */}
-          <div className="tab-container">
-            <button
-              className={`tab-btn ${activeTab === 'editor' ? 'active' : ''}`}
-              onClick={() => setActiveTab('editor')}
-            >
-              <ListFilter size={16} />
-              <span>NativeBOX 자막 타임라인</span>
-            </button>
-
-            <button
-              className={`tab-btn ${activeTab === 'ai' ? 'active' : ''}`}
-              onClick={() => setActiveTab('ai')}
-            >
-              <Cpu size={16} color="#a78bfa" />
-              <span>AI 자동 문장 분할기</span>
-            </button>
-          </div>
-
-          {/* Active Tab Content */}
-          {activeTab === 'ai' ? (
-            <AiSegmenter
-              onMediaLoaded={(url) => setVideoSrc(url)}
-              onSegmentsGenerated={(newSegments) => {
-                setSegments(newSegments);
-                setCurrentSegmentIndex(0);
-                setActiveTab('editor');
-              }}
+      {/* Main Content Body */}
+      <main style={{ flex: 1, padding: 16, position: 'relative', overflowX: 'hidden' }}>
+        {activeTab === 'nativebox' && (
+          <div className="nativebox-skin">
+            {/* NativeBOX Top Player Frame */}
+            <NativeBoxPlayer
+              videoSrc={videoSrc}
+              videoTitle={videoTitle}
+              segments={segments}
+              currentSegmentIndex={currentSegmentIndex}
+              onTimeUpdate={handleTimeUpdate}
+              onSelectSegment={(idx) => setCurrentSegmentIndex(idx)}
+              isRepeatSentence={isRepeatSentence}
+              setIsRepeatSentence={setIsRepeatSentence}
+              screenMode={screenMode}
+              setScreenMode={setScreenMode}
+              captionMode={captionMode}
+              setCaptionMode={setCaptionMode}
+              fontSize={fontSize}
+              setFontSize={setFontSize}
+              showContentsList={showContentsList}
+              onToggleContentsList={() => setShowContentsList(!showContentsList)}
             />
-          ) : (
+
+            {/* NativeBOX Bottom Main Script Viewer */}
+            <SubtitleScriptViewer
+              segments={segments}
+              currentSegmentIndex={currentSegmentIndex}
+              onSelectSegment={(idx) => setCurrentSegmentIndex(idx)}
+              captionMode={captionMode}
+              fontSize={fontSize}
+            />
+
+            {/* NativeBOX Floating Contents List (Bottom Right) */}
+            {showContentsList && (
+              <ContentsListModal
+                currentFileName={videoTitle}
+                onClose={() => setShowContentsList(false)}
+                onSelectMedia={handleMediaSelect}
+              />
+            )}
+          </div>
+        )}
+
+        {activeTab === 'editor' && (
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
             <SubtitleEditor
               segments={segments}
               currentSegmentIndex={currentSegmentIndex}
@@ -239,8 +271,21 @@ export default function Home() {
               onDeleteSegment={handleDeleteSegment}
               onAddSegment={handleAddSegment}
             />
-          )}
-        </div>
+          </div>
+        )}
+
+        {activeTab === 'ai' && (
+          <div style={{ maxWidth: 900, margin: '0 auto' }}>
+            <AiSegmenter
+              onMediaLoaded={(url) => setVideoSrc(url)}
+              onSegmentsGenerated={(newSegments) => {
+                setSegments(newSegments);
+                setCurrentSegmentIndex(0);
+                setActiveTab('nativebox');
+              }}
+            />
+          </div>
+        )}
       </main>
 
       {/* Export Modal */}

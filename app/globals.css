@@ -419,3 +419,255 @@ h1, h2, h3, .brand-font {
   padding: 24px;
   box-shadow: var(--glass-shadow);
 }
+
+/* ==========================================================================
+   NativeBOX.com Retro Metallic Theme & Bevel UI System
+   ========================================================================== */
+
+.nativebox-skin {
+  background: #c3c7cf;
+  background-image: linear-gradient(180deg, #d8dce4 0%, #b5b9c2 100%);
+  color: #1a1a1a;
+  font-family: 'Tahoma', 'Segoe UI', sans-serif;
+  border-radius: 8px;
+  box-shadow: inset 1px 1px 0px #ffffff, inset -1px -1px 0px #70757e, 0 10px 30px rgba(0, 0, 0, 0.4);
+  border: 2px solid #8e939d;
+  padding: 8px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.nb-header-bar {
+  background: linear-gradient(180deg, #e4e7ed 0%, #c0c4cc 100%);
+  border: 1px solid #7d828c;
+  box-shadow: inset 1px 1px 0px #ffffff, inset -1px -1px 0px #90949d;
+  border-radius: 4px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.nb-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nb-brand-name {
+  font-weight: 900;
+  font-size: 13px;
+  color: #2b303a;
+  letter-spacing: -0.2px;
+}
+
+.nb-file-title {
+  background: #111;
+  color: #00ff66;
+  font-family: monospace;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid #555;
+  font-size: 11px;
+}
+
+.nb-window-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.nb-win-btn {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(180deg, #f0f0f0 0%, #c8c8c8 100%);
+  border: 1px solid #666;
+  box-shadow: inset 1px 1px 0px #fff;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.nb-win-btn:active {
+  box-shadow: inset 1px 1px 2px #333;
+  background: #bbb;
+}
+
+/* 3D Bevel Button (NativeBOX signature) */
+.nb-bevel-btn {
+  background: linear-gradient(180deg, #f4f5f7 0%, #c9cdd4 100%);
+  border: 1px solid #757982;
+  box-shadow: inset 1px 1px 0px #ffffff, inset -1px -1px 0px #888d96, 0 1px 2px rgba(0,0,0,0.15);
+  border-radius: 5px;
+  color: #222;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  user-select: none;
+  transition: all 0.1s ease;
+}
+
+.nb-bevel-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #d4d8e0 100%);
+}
+
+.nb-bevel-btn:active, .nb-bevel-btn.pressed {
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.4), inset -1px -1px 0px #ffffff;
+  background: linear-gradient(180deg, #b0b4bc 0%, #d0d4dc 100%);
+}
+
+.nb-bevel-btn.active-green {
+  background: linear-gradient(180deg, #bbf7a3 0%, #52d62e 100%);
+  border-color: #3b9e1e;
+  box-shadow: inset 1px 1px 1px #e6ffdb, inset -1px -1px 0px #2a7314, 0 0 6px rgba(82, 214, 46, 0.5);
+  color: #0b3602;
+}
+
+.nb-bevel-btn.active-blue {
+  background: linear-gradient(180deg, #93c5fd 0%, #2563eb 100%);
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+/* Outer bevel panel */
+.nb-panel-inset {
+  background: #b5b9c2;
+  border: 2px solid #7d828c;
+  box-shadow: inset 1px 1px 2px #50545c, inset -1px -1px 0px #ffffff;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.nb-panel-outset {
+  background: linear-gradient(180deg, #dcdee3 0%, #b8bcc4 100%);
+  border: 1px solid #737780;
+  box-shadow: inset 1px 1px 0px #ffffff, inset -1px -1px 0px #888c94;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+/* Subtitle Script Scroll Box (Bottom Main Area) */
+.nb-script-container {
+  background: #ffffff;
+  border: 2px solid #6c717a;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.3), inset -1px -1px 0px #fff;
+  border-radius: 4px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 280px;
+  min-height: 200px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.nb-script-item {
+  padding: 6px 12px;
+  margin-bottom: 4px;
+  border-radius: 3px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: #222;
+}
+
+.nb-script-item:hover {
+  background: #f0f4f8;
+}
+
+.nb-script-item.active-sentence {
+  color: #0033cc !important;
+  font-weight: bold;
+  background: #e6f0ff;
+  border: 1px solid #b3d1ff;
+}
+
+.nb-script-icon {
+  width: 12px;
+  height: 12px;
+  border: 1px solid #777;
+  background: #fff;
+  margin-top: 6px;
+  flex-shrink: 0;
+  box-shadow: inset 1px 1px 1px #aaa;
+}
+
+/* Contents List Modal Window */
+.nb-contents-modal {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 320px;
+  background: linear-gradient(180deg, #d8dce4 0%, #b8bcc4 100%);
+  border: 2px solid #5a5e66;
+  box-shadow: inset 1px 1px 0px #fff, 0 10px 25px rgba(0,0,0,0.5);
+  border-radius: 4px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+}
+
+.nb-contents-title {
+  background: linear-gradient(90deg, #4a505c 0%, #7b8290 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nb-contents-list-box {
+  background: #ffffff;
+  border: 1px solid #70747c;
+  margin: 6px;
+  height: 140px;
+  overflow-y: auto;
+  font-family: sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.nb-contents-item {
+  padding: 3px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nb-contents-item:hover {
+  background: #e0e8f5;
+}
+
+.nb-contents-item.selected {
+  background: #cbf5bd;
+  color: #000;
+}
+
+.nb-contents-indicator {
+  width: 10px;
+  height: 10px;
+  background: #84e86b;
+  border: 1px solid #3b9625;
+}
