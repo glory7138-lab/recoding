@@ -15,7 +15,7 @@ This file serves as your primary entry point to understand the project architect
 ## 2. Tech Stack
 - **Frontend**: Next.js (App Router), React 18, Lucide React (Icons), Vanilla CSS (`globals.css`).
 - **Desktop Runtime**: Electron 31, Electron Builder (Portable Windows build).
-- **Backend / API**: Next.js API Routes (`app/api/whisper/route.js`).
+- **Backend / API**: Next.js API Routes (client-side export mostly) and **Python FastAPI (WhisperX)** for Auto-Segmenter module.
 - **Tools / Scripts**: Concurrently, Cross-env.
 
 ## 3. Source of Truth (SoT) Documentation
@@ -23,6 +23,7 @@ Do NOT guess the project rules. Always refer to the markdown files in the `docs/
 - `docs/INDEX.md`: Overall index of all documentation categories.
 - `docs/00_SOT/product-scope.md`: Product summary, key features, and technical constraints.
 - `docs/00_SOT/collaboration-rules.md`: Standard GitHub collaboration process & documentation update rules.
+- `docs/00_SOT/ai-auto-segmenter.md`: Architecture and roadmap for the Python (WhisperX) based AI auto-segmentation module.
 - `docs/10_Architecture/`: Frontend, Next.js API, and Electron process architecture.
 - `docs/20_Domain/`: Subtitle formats (SRT, VTT, ASS), Whisper transcription rules, timecode formatting.
 - `docs/40_API/`: Whisper API integration contracts and file handling guidelines.

@@ -4,7 +4,7 @@
 코드는 이 문서를 따라야 하며, 기능이나 구조가 변경될 때 항상 SoT 문서도 함께 수정해야 합니다.
 
 ## 분류
-- `00_SOT/` : 제품 정의, 개발 표준, 협업 및 문서화 규칙 (`product-scope.md`, `collaboration-rules.md`)
+- `00_SOT/` : 제품 정의, 개발 표준, 협업 및 문서화 규칙 (`product-scope.md`, `collaboration-rules.md`, `ai-auto-segmenter.md`)
 - `10_Architecture/` : Next.js App Router, Electron 통합 프로세스, 컴포넌트 아키텍처
 - `20_Domain/` : 자막 규격(VTT, SRT, ASS), 타임코드 연산 및 AI 문장 분할 규칙
 - `30_Data/` : 자막 데이터구조 및 템플릿 정보
