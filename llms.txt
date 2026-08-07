@@ -1,0 +1,38 @@
+# Recoding (NativeBOX AI Sentence Segmenter & Subtitle Editor) - LLM Wiki
+
+Welcome, AI Agent! This is the `llms.txt` file for the Recoding project.
+This file serves as your primary entry point to understand the project architecture, tech stack, and development guidelines.
+
+## 1. Project Overview
+- **Name**: Recoding (NativeBOX AI Sentence Segmenter & Subtitle Editor)
+- **Goal**: Next.js 및 Electron 기반의 AI 문장 자동 분할, 자막 생성 및 편집, 미디어 플레이어 데스크톱/웹 애플리케이션.
+- **Key Features**:
+  - 미디어(동영상/음성) 파일 재생 및 시간축 기반 자막 타임코드 조절.
+  - OpenAI Whisper API 및 AI 문장 분할(AiSegmenter) 알고리즘을 활용한 자동 자막 생성.
+  - 자막 에디터 (SubtitleEditor) 및 VTT / SRT / ASS 등 다국어 자막 포맷 내보내기/가져오기 기능.
+  - Next.js 기반 웹 뷰 + Electron 래핑을 통한 데스크톱 패키징 (Portable 실행 파일 빌드).
+
+## 2. Tech Stack
+- **Frontend**: Next.js (App Router), React 18, Lucide React (Icons), Vanilla CSS (`globals.css`).
+- **Desktop Runtime**: Electron 31, Electron Builder (Portable Windows build).
+- **Backend / API**: Next.js API Routes (`app/api/whisper/route.js`).
+- **Tools / Scripts**: Concurrently, Cross-env.
+
+## 3. Source of Truth (SoT) Documentation
+Do NOT guess the project rules. Always refer to the markdown files in the `docs/` directory:
+- `docs/INDEX.md`: Overall index of all documentation categories.
+- `docs/00_SOT/product-scope.md`: Product summary, key features, and technical constraints.
+- `docs/00_SOT/collaboration-rules.md`: Standard GitHub collaboration process & documentation update rules.
+- `docs/10_Architecture/`: Frontend, Next.js API, and Electron process architecture.
+- `docs/20_Domain/`: Subtitle formats (SRT, VTT, ASS), Whisper transcription rules, timecode formatting.
+- `docs/40_API/`: Whisper API integration contracts and file handling guidelines.
+- `docs/50_User_Scenarios/`: Subtitle generation, media playback, and subtitle export workflows.
+- `docs/60_ADRs/`: Architecture Decision Records.
+- `docs/90_Worklog/`: Work history and change logs.
+
+## 4. Coding Guidelines & Agentic Workflow
+- **Collaboration & Git**: Always branch off from `main` (e.g., `feature/...`, `fix/...`), commit in meaningful units, and create a Pull Request.
+- **Documentation Principle**: Code changes and documentation updates are considered a single unit of work. Never consider a task completed without updating relevant SoT documents.
+- **Next.js & React**: Keep components clean and dynamic; follow standard Next.js App Router rules.
+- **Electron Interop**: Ensure smooth operation both in standard web browser mode and Electron desktop window mode (`main.js`).
+- **Worklog**: Log major updates under `docs/90_Worklog/` with structured entries.
