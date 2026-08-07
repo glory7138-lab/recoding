@@ -57,7 +57,14 @@
 
 ---
 
-## 3. Collaboration Principle
+## 4. Specific Trigger Command Protocols
 
-이 프로젝트에서는 "코드 변경"과 "문서 반영"을 하나의 작업으로 본다.
-구현만 완료되고 문서가 최신화되지 않은 작업은 완료된 것으로 간주하지 않는다.
+### 1) "여기서 할게" (Start Session Protocol)
+- `git status` 및 최근 `docs/90_Worklog/` 작업 일지를 확인하여 작업 맥락 복원.
+- 현재 브랜치 및 저장소 최신성 상태를 검증하고 진행 상황 요약 보고.
+
+### 2) "pr 생성해" / "마무리 해" (End Session Protocol)
+- 변경된 코드와 함께 `docs/90_Worklog/WORK_HISTORY_YYYYMMDD.md` 및 SoT 문서 최신화.
+- 작업 브랜치 생성 후 커밋 & push.
+- GitHub Pull Request 생성 및 링크 전달.
+
