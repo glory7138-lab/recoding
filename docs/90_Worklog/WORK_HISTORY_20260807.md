@@ -29,6 +29,14 @@
 - `app/components/ContentsListModal.js`: 우측 하단 `Contents List` 미니 윈도우 팝업 구현.
 - `app/page.js`: NativeBOX 스킨 레이아웃 메인 뷰 통합.
 
+### 5) NativeBoxPlayer 문장 반복 조작부 추가 및 오디오 업로드 안전장치
+- `app/components/NativeBoxPlayer.js`: 우측 조작 패널에 `↺ 1회` (현재 문장 1회 재시작) 및 `🔁 무한` (구간반복 ON/OFF) 컴팩트 가로 배치 버튼 추가.
+- `app/components/AiSegmenter.js`: `FileReader` 2중 세이프가드 버퍼 로직 적용 (`[DLBunny]...mp4` 같은 임시 다운로드 파일 접근 오류 해결), 오디오 전용 확장자(`.mp3`, `.wav`, `.m4a`, `.aac`, `.flac`, `.ogg`, `.wma`) 드래그&드롭 허용.
+
+### 6) AI Auto-Segmenter 모듈 (WhisperX) SOT 및 PoC 구축
+- `docs/00_SOT/ai-auto-segmenter.md`: WhisperX + Wav2Vec2 음소 강제 정렬 기반의 4단계 파이프라인 및 4주 로드맵 수립.
+- `auto-segmenter/poc_segmenter.py`: Python + WhisperX + FFmpeg 로컬 테스트 환경 세팅 완료 및 `sample.mp4` 정밀 밀리초(ms) 타임스탬프 추출 검증 완료.
+
 ## 3. 검증 결과
-- Next.js 프로덕션 빌드(`npm run build`) 오류 없이 100% 성공.
-- 모든 기능 및 문서 `main` 브랜치 병합 후 `origin/main` 푸시 완료.
+- Next.js 프로덕션 빌드(`npm run build`) 성공.
+- Electron 포터블 실행 파일 패키징(`npm run dist`) 성공 (`dist/NativeBOX_AI_Player-win32-x64/NativeBOX_AI_Player.exe`).

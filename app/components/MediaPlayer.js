@@ -175,23 +175,30 @@ export default function MediaPlayer({
 
         {/* Control Buttons Row */}
         <div className="control-buttons-row">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <button className="btn-icon btn-primary" onClick={togglePlay}>
               {isPlaying ? <Pause size={18} /> : <Play size={18} />}
               <span>{isPlaying ? '일시정지' : '재생'}</span>
             </button>
 
-            <button className="btn-icon" onClick={replayCurrentSentence} title="현재 문장 다시 재생">
+            <button
+              className="btn-icon"
+              onClick={replayCurrentSentence}
+              title="현재 문장 처음부터 다시 재생"
+              style={{ color: '#fbbf24', borderColor: 'rgba(251,191,36,0.4)', background: 'rgba(251,191,36,0.1)' }}
+            >
               <RotateCcw size={16} />
               <span>문장 반복</span>
             </button>
 
             <button className="btn-icon" onClick={jumpPrevSentence} title="이전 문장">
               <SkipBack size={16} />
+              <span>이전</span>
             </button>
 
             <button className="btn-icon" onClick={jumpNextSentence} title="다음 문장">
               <SkipForward size={16} />
+              <span>다음</span>
             </button>
 
             <button
@@ -200,7 +207,7 @@ export default function MediaPlayer({
               title="한 문장 무한 구간 반복"
             >
               <Repeat size={16} />
-              <span>{isRepeatSentence ? '구간반복 ON' : '구간반복 OFF'}</span>
+              <span>{isRepeatSentence ? '🔁 구간반복 ON' : '구간반복 OFF'}</span>
             </button>
           </div>
 

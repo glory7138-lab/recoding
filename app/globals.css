@@ -209,7 +209,8 @@ h1, h2, h3, .brand-font {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .btn-icon {

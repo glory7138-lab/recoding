@@ -291,15 +291,43 @@ export default function NativeBoxPlayer({
             </div>
           </div>
 
+          {/* Repeat Controls (Horizontal like modern player) */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="nb-bevel-btn"
+              style={{ flex: 1, padding: '6px 0', color: '#b45309', fontWeight: 'bold', fontSize: 11 }}
+              onClick={() => {
+                if (currentSegmentIndex !== null && segments[currentSegmentIndex] && videoRef.current) {
+                  videoRef.current.currentTime = segments[currentSegmentIndex].start;
+                  videoRef.current.play().catch(() => {});
+                  setIsPlaying(true);
+                }
+              }}
+              title="현재 문장 다시 재생"
+            >
+              ↺ 1회
+            </button>
+            <button
+              className={`nb-bevel-btn ${isRepeatSentence ? 'active-green' : ''}`}
+              style={{ flex: 1, padding: '6px 0', fontSize: 11, fontWeight: isRepeatSentence ? 'bold' : 'normal' }}
+              onClick={() => setIsRepeatSentence(!isRepeatSentence)}
+              title="한 문장 구간 무한 반복"
+            >
+              {isRepeatSentence ? '🔁 무한' : '⇄ 반복OFF'}
+            </button>
+          </div>
+
           {/* Bottom Play / Stop Buttons */}
           <div style={{ display: 'flex', gap: 6 }}>
-            <button className="nb-bevel-btn active-green" style={{ flex: 1, padding: '8px 0' }} onClick={togglePlay}>
+            <button className="nb-bevel-btn active-green" style={{ flex: 2, padding: '8px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onClick={togglePlay}>
               {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+              <span style={{ fontSize: 12, fontWeight: 'bold' }}>{isPlaying ? '일시정지' : '재생'}</span>
             </button>
             <button className="nb-bevel-btn" style={{ flex: 1, padding: '8px 0' }} onClick={stopPlay}>
               <Square size={14} fill="#666" />
             </button>
           </div>
+
         </div>
       </div>
 

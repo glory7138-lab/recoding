@@ -41,13 +41,37 @@ async function translateOpenAI(text, targetLang, apiKey) {
 
 // Extract audio from video/audio file as Float32Array (16kHz mono)
 async function extractAudio(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const audioCtx = new AudioContext({ sampleRate: 16000 });
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  // Get mono channel data
-  const channelData = audioBuffer.getChannelData(0);
-  audioCtx.close();
-  return channelData;
+  let arrayBuffer;
+  try {
+    arrayBuffer = await file.arrayBuffer();
+  } catch (err) {
+    // Fallback using FileReader if direct arrayBuffer() fails (e.g. temporary file lock or Chrome File handle issue)
+    arrayBuffer = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('파일을 읽을 수 없습니다. (다운로드 중이거나 다른 프로그램에서 사용 중인 파일일 수 있습니다.)'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioCtxClass({ sampleRate: 16000 });
+  
+  try {
+    const audioBuffer = await new Promise((resolve, reject) => {
+      audioCtx.decodeAudioData(arrayBuffer, resolve, (decodeErr) => {
+        reject(new Error('오디오 코덱을 해독할 수 없습니다. (MP3/WAV/AAC 형식 지원)'));
+      });
+    });
+    
+    // Get mono channel data
+    const channelData = audioBuffer.getChannelData(0);
+    audioCtx.close();
+    return channelData;
+  } catch (decodeErr) {
+    audioCtx.close();
+    throw decodeErr;
+  }
 }
 
 const ENGINE_OPTIONS = [
@@ -174,8 +198,12 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
 
   const handleFileChange = (file) => {
     if (!file) return;
-    if (!file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
-      setError('동영상(mp4, avi, mkv 등) 또는 오디오(mp3, wav) 파일만 업로드 가능합니다.');
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const validExts = ['mp4', 'mkv', 'avi', 'mov', 'webm', 'mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg', 'wma'];
+    const isValidType = (file.type && (file.type.startsWith('video/') || file.type.startsWith('audio/'))) || validExts.includes(ext);
+
+    if (!isValidType) {
+      setError('동영상(mp4, avi, mkv 등) 또는 오디오(mp3, wav, m4a 등) 파일만 업로드 가능합니다.');
       return;
     }
     setError('');
