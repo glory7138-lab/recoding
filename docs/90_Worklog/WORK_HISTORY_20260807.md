@@ -18,5 +18,10 @@
 - `docs/00_SOT/collaboration-rules.md`: GitHub 브랜치 전략, PR 및 문서 반영 규칙 수립.
 - `docs/90_Worklog/WORK_HISTORY_20260807.md`: 최초 작업 이력 작성.
 
+### 3) 워크플로우 규칙 보완 ("마무리 해" 실행 시 main 동기화 의무화)
+- `.agents/AGENTS.md` 및 `docs/00_SOT/collaboration-rules.md` 개정.
+- 작업 종료 명령어("마무리 해", "pr 생성해") 실행 시 작업 브랜치 커밋/Push뿐만 아니라 `main` 브랜치 자동 Merge 및 `origin/main` Push를 의무화하여 항상 최신 `main` 브랜치 유지를 보장.
+
 ## 3. 검증 결과
-- 모든 문서 파일 구성 완료 및 local git staging 상태 확인.
+- 모든 문서 파일 구성 완료, `main` 브랜치 병합 및 `origin/main` 푸시 완료.
+- local working tree clean 상태 확인.
