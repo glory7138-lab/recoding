@@ -66,5 +66,6 @@
 ### 2) "pr 생성해" / "마무리 해" (End Session Protocol)
 - 변경된 코드와 함께 `docs/90_Worklog/WORK_HISTORY_YYYYMMDD.md` 및 SoT 문서 최신화.
 - 작업 브랜치 생성 후 커밋 & push.
-- GitHub Pull Request 생성 및 링크 전달.
+- `main` 브랜치로 병합(Merge) 및 `origin/main` push 수행하여 `main` 브랜치 완전 동기화.
+- 필요시 GitHub Pull Request 생성 및 링크 전달.
 

@@ -30,11 +30,12 @@
 2. **작업 브랜치 생성 및 커밋**:
    - 목적에 맞는 작업 브랜치(`feature/...`, `fix/...`, `docs/...`) 생성
    - 의미 있는 커밋 메시지로 변경 사항 커밋
-3. **Remote Push & Pull Request 생성**:
-   - GitHub 원격 저장소로 브랜치 `push`
-   - GitHub Pull Request 자동 생성 (제목, 핵심 변경사항, 검증 결과 포함)
+3. **Remote Push & main 브랜치 동기화 (Merge & Push)**:
+   - GitHub 원격 저장소로 작업 브랜치 `push`
+   - `main` 브랜치로 병합(Merge) 및 `origin/main`으로 최종 `push` 수행 (작업 내역이 `main` 브랜치에 완전히 반영되도록 보장)
+   - 필요시 GitHub Pull Request 생성 및 기록 연동
 4. **결과 공유**:
-   - 생성된 PR 링크와 작업 요약을 사용자에게 전달
+   - `main` 브랜치 반영 상태, PR 링크(생성 시) 및 작업 요약을 사용자에게 전달
 
 ---
 
