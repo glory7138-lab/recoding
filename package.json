@@ -12,27 +12,17 @@
     "lint": "next lint",
     "electron": "electron .",
     "app:dev": "concurrently \"npm run dev\" \"electron .\"",
-    "dist": "electron-builder --win portable"
-  },
-  "build": {
-    "appId": "com.nativebox.aiplayer",
-    "productName": "NativeBOX_AI_Player",
-    "win": {
-      "target": "portable"
-    },
-    "files": [
-      "out/**/*",
-      "main.js",
-      "package.json"
-    ]
+    "dist": "electron-packager . NativeBOX_AI_Player --platform=win32 --arch=x64 --out=dist --overwrite --ignore=node_modules/\\.cache --ignore=\\.next --ignore=docs --ignore=\\.agents --ignore=\\.git --ignore=\\.gitignore"
   },
   "dependencies": {
+    "@xenova/transformers": "^2.17.2",
     "lucide-react": "^0.400.0",
     "next": "^14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@electron/packager": "^20.2.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^31.3.0",
