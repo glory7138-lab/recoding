@@ -37,11 +37,11 @@ export default function SubtitleScriptViewer({
   }, [currentSegmentIndex]);
 
   const getFontSizePx = () => {
-    if (typeof fontSize === 'number') return `${fontSize}px`;
+    if (typeof fontSize === 'number') return `${fontSize * 1.3}px`;
     switch (fontSize) {
-      case 'small': return '12px';
-      case 'large': return '20px';
-      default: return '14px';
+      case 'small': return '16px';
+      case 'large': return '28px';
+      default: return '20px';
     }
   };
 
@@ -81,52 +81,52 @@ export default function SubtitleScriptViewer({
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', marginTop: 12 }}>
+    <div style={{ position: 'relative', width: '100%', marginTop: 14 }}>
       
       {/* 📋 Master Checkbox Top Header Bar with Right-Aligned Font Size Controls */}
       <div style={{
         background: '#1e293b',
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: '12px 12px 0 0',
-        padding: '8px 14px',
+        padding: '14px 22px',
         display: 'flex',
         alignItems: 'center',
-        justify: 'space-between',
+        justifyContent: 'space-between',
         color: '#fff',
-        fontSize: 12,
+        fontSize: 18,
         fontWeight: 'bold',
-        gap: 10
+        gap: 16
       }}>
         {/* Left: Master Checkbox */}
         <div
           onClick={toggleMasterCheckbox}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}
           title="클릭 시 자막 전체 선택 / 해제"
         >
           <input
             type="checkbox"
             checked={isAllChecked}
             onChange={toggleMasterCheckbox}
-            style={{ width: 16, height: 16, accentColor: '#10b981', cursor: 'pointer' }}
+            style={{ width: 24, height: 24, accentColor: '#10b981', cursor: 'pointer' }}
           />
-          <span style={{ fontSize: 13, color: '#f8fafc' }}>☐ 전체 선택</span>
-          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 4 }}>
+          <span style={{ fontSize: 20, color: '#f8fafc', fontWeight: '800' }}>☐ 전체 선택</span>
+          <span style={{ fontSize: 16, color: '#94a3b8', marginLeft: 6, fontWeight: '600' }}>
             ({checkedIndices.length} / {segments.length}개 선택됨)
           </span>
         </div>
 
         {/* Center: Hint */}
-        <div style={{ fontSize: 11, color: '#38bdf8', fontWeight: 'normal' }}>
+        <div style={{ fontSize: 16, color: '#38bdf8', fontWeight: '600' }}>
           💡 체크 선택 없음 ➔ 우측 [반복] 누르면 "전체 영상" 반복
         </div>
 
         {/* Right: Font Size Controls */}
         {setFontSize && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="자막 글자 크기 미세 조절">
-            <span style={{ fontSize: 11, color: '#94a3b8', marginRight: 2 }}>글자</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} title="자막 글자 크기 미세 조절">
+            <span style={{ fontSize: 16, color: '#94a3b8', marginRight: 4, fontWeight: '600' }}>글자</span>
             <button
               className="nb-bevel-btn"
-              style={{ padding: '1px 6px', fontSize: 11, fontWeight: 'bold' }}
+              style={{ padding: '4px 12px', fontSize: 16, fontWeight: 'bold' }}
               onClick={() => setFontSize(Math.max(10, (typeof fontSize === 'number' ? fontSize : 14) - 2))}
               title="글자 크기 축소 (-2px)"
             >
@@ -134,14 +134,14 @@ export default function SubtitleScriptViewer({
             </button>
             <span
               onClick={() => setFontSize(14)}
-              style={{ fontSize: 10, fontWeight: 'bold', color: '#34d399', background: 'rgba(16,185,129,0.15)', padding: '1px 6px', borderRadius: 4, cursor: 'pointer' }}
+              style={{ fontSize: 15, fontWeight: 'bold', color: '#34d399', background: 'rgba(16,185,129,0.15)', padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}
               title="기본 14px 복원"
             >
               {typeof fontSize === 'number' ? `${fontSize}px` : '14px'}
             </span>
             <button
               className="nb-bevel-btn"
-              style={{ padding: '1px 6px', fontSize: 11, fontWeight: 'bold' }}
+              style={{ padding: '4px 12px', fontSize: 16, fontWeight: 'bold' }}
               onClick={() => setFontSize(Math.min(48, (typeof fontSize === 'number' ? fontSize : 14) + 2))}
               title="글자 크기 확대 (+2px)"
             >
@@ -151,17 +151,17 @@ export default function SubtitleScriptViewer({
         )}
       </div>
 
-      {/* Main Subtitle Script Container (Sized to fit 4+ items simultaneously) */}
+      {/* Main Subtitle Script Container (Sized to fit 6~7 items simultaneously with double font scale) */}
       <div
         ref={containerRef}
         className="nb-script-container"
         style={{
           fontSize: getFontSizePx(),
-          paddingLeft: 16,
-          paddingRight: 16,
+          paddingLeft: 20,
+          paddingRight: 20,
           borderRadius: '0 0 12px 12px',
           borderTop: 'none',
-          maxHeight: Math.max(220, Math.round(260 * (playerSizePercent / 100)))
+          maxHeight: Math.max(480, Math.round(520 * (playerSizePercent / 100)))
         }}
       >
         {segments && segments.length > 0 ? (
@@ -192,9 +192,9 @@ export default function SubtitleScriptViewer({
                     display: 'flex',
                     alignItems: 'center',
                     justify: 'center',
-                    padding: '4px',
+                    padding: '6px',
                     cursor: 'pointer',
-                    borderRadius: 4,
+                    borderRadius: 6,
                     flexShrink: 0
                   }}
                   title="체크 시 우측 플레이어 반복 버튼으로 선택 문장 묶음 재생"
@@ -204,8 +204,8 @@ export default function SubtitleScriptViewer({
                     checked={isChecked}
                     onChange={(e) => toggleCheckbox(idx, e)}
                     style={{
-                      width: 18,
-                      height: 18,
+                      width: 22,
+                      height: 22,
                       accentColor: '#10b981',
                       cursor: 'pointer'
                     }}
@@ -213,21 +213,21 @@ export default function SubtitleScriptViewer({
                 </div>
 
                 {/* 2. Sentence Number & Timestamp Pill */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 2 }}>
                   <span style={{
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: 700,
                     color: isActive || isChecked ? '#047857' : '#475569',
                     background: isActive || isChecked ? '#d1fae5' : '#e2e8f0',
-                    padding: '2px 6px',
-                    borderRadius: 4,
+                    padding: '3px 8px',
+                    borderRadius: 6,
                     border: `1px solid ${isActive || isChecked ? '#6ee7b7' : '#cbd5e1'}`
                   }}>
                     #{String(idx + 1).padStart(2, '0')}
                   </span>
                   <span style={{
                     fontFamily: 'monospace',
-                    fontSize: 10,
+                    fontSize: 13,
                     color: isActive || isChecked ? '#059669' : '#64748b',
                     fontWeight: '600'
                   }}>
@@ -252,7 +252,7 @@ export default function SubtitleScriptViewer({
                   {/* Korean Translation */}
                   {(captionMode === 'K' || captionMode === 'EK') && seg.translation && (
                     <div style={{
-                      color: isActive ? '#0284c7' : '#2563eb',
+                      color: isActive ? '#0369a1' : '#334155',
                       fontSize: '0.94em',
                       fontWeight: isActive ? 600 : 500,
                       lineHeight: 1.4

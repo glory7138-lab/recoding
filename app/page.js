@@ -88,6 +88,8 @@ export default function Home() {
       const savedPlayerSize = localStorage.getItem('nb_player_size');
       if (savedPlayerSize && !isNaN(Number(savedPlayerSize))) {
         setPlayerSizePercentState(Number(savedPlayerSize));
+      } else {
+        setPlayerSizePercentState(100);
       }
     } catch (e) {}
   }, []);
@@ -150,9 +152,7 @@ export default function Home() {
   const handleSelectPlaylistItem = (item) => {
     setVideoSrc(item.url);
     setVideoTitle(item.name);
-    if (item.segments && item.segments.length > 0) {
-      setSegments(item.segments);
-    }
+    setSegments(item.segments || []);
     setCurrentSegmentIndex(0);
   };
 
@@ -172,26 +172,179 @@ export default function Home() {
     input.click();
   };
 
-  const handleDeletePlaylistItem = () => {
+  const handleDeletePlaylistItem = (targetId) => {
     if (playlist.length <= 1) return;
-    const nextList = playlist.filter(p => p.name !== videoTitle);
+    const targetItem = playlist.find(p => p.id === targetId || p.name === targetId);
+    const nextList = playlist.filter(p => (p.id !== targetId && p.name !== targetId));
     setPlaylist(nextList);
-    if (nextList[0]) handleSelectPlaylistItem(nextList[0]);
+    
+    // 삭제된 항목이 현재 재생 중인 영상인 경우 다음 항목을 선택하고 자막 갱신
+    if (targetItem && (targetItem.name === videoTitle || targetItem.url === videoSrc)) {
+      if (nextList[0]) {
+        handleSelectPlaylistItem(nextList[0]);
+      } else {
+        setVideoSrc('');
+        setVideoTitle('');
+        setSegments([]);
+      }
+    }
   };
 
   const handleSubtitleSelect = (fileContent, fileName) => {
     try {
-      const parsed = parseSRTContent(fileContent);
+      let parsed = [];
+      const trimmed = fileContent.trim();
+      const lowerName = fileName.toLowerCase();
+      
+      // 1. JSON / NBC Format
+      if (lowerName.endsWith('.json') || lowerName.endsWith('.nbc') || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          const rawJson = JSON.parse(fileContent);
+          if (Array.isArray(rawJson)) {
+            parsed = rawJson.map((item, idx) => ({
+              id: item.id || idx + 1,
+              start: typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0,
+              end: typeof item.end === 'number' ? item.end : parseFloat(item.end) || 0,
+              text: item.text || item.english || '',
+              translation: item.translation || item.korean || '',
+              memo: item.memo || ''
+            }));
+          }
+        } catch (err) {}
+      }
+
+      // 2. SMI / SAMI Subtitle Format
+      if (parsed.length === 0 && (lowerName.endsWith('.smi') || trimmed.toUpperCase().includes('<SAMI>'))) {
+        parsed = parseSMIContent(fileContent);
+      }
+
+      // 3. VTT (WebVTT) Subtitle Format
+      if (parsed.length === 0 && (lowerName.endsWith('.vtt') || trimmed.startsWith('WEBVTT'))) {
+        parsed = parseVTTContent(fileContent);
+      }
+
+      // 4. ASS / SSA Subtitle Format
+      if (parsed.length === 0 && (lowerName.endsWith('.ass') || lowerName.endsWith('.ssa') || trimmed.includes('[Script Info]'))) {
+        parsed = parseASSContent(fileContent);
+      }
+
+      // 5. CSV / TSV Format
+      if (parsed.length === 0 && (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv'))) {
+        parsed = parseCSVContent(fileContent);
+      }
+
+      // 6. Standard SRT & Fallback Text Format
+      if (parsed.length === 0) {
+        parsed = parseSRTContent(fileContent);
+      }
+
       if (parsed && parsed.length > 0) {
         setSegments(parsed);
         setCurrentSegmentIndex(0);
+        
+        // 현재 선택된 재생목록 항목에도 자막 세그먼트 저장
+        setPlaylist(prev => prev.map(p => {
+          if (p.name === videoTitle || p.url === videoSrc) {
+            return { ...p, segments: parsed };
+          }
+          return p;
+        }));
+        
         alert(`자막 파일(${fileName})에서 총 ${parsed.length}개 문장을 성공적으로 불러왔습니다!`);
       } else {
-        alert('자막 파싱 실패: SRT 타임라인 형식을 확인해 주세요.');
+        alert('자막 파싱 실패: 자막 타임라인 형식을 확인해 주세요.');
       }
     } catch (e) {
       alert(`자막 읽기 오류: ${e.message}`);
     }
+  };
+
+  // SMI (SAMI) Parser
+  const parseSMIContent = (text) => {
+    const syncRegex = /<SYNC\s+Start=(\d+)>/gi;
+    const matches = [...text.matchAll(syncRegex)];
+    const result = [];
+
+    for (let i = 0; i < matches.length; i++) {
+      const startTimeSec = parseInt(matches[i][1], 10) / 1000;
+      const nextTimeSec = matches[i + 1] ? parseInt(matches[i + 1][1], 10) / 1000 : startTimeSec + 3;
+      const startPos = matches[i].index + matches[i][0].length;
+      const endPos = matches[i + 1] ? matches[i + 1].index : text.length;
+      const rawBody = text.substring(startPos, endPos);
+      const cleanBody = rawBody.replace(/<[^>]+>/g, '').trim();
+
+      if (cleanBody && cleanBody.toUpperCase() !== '&NBSP;') {
+        result.push({
+          id: result.length + 1,
+          start: startTimeSec,
+          end: Math.max(startTimeSec + 0.5, nextTimeSec),
+          text: cleanBody,
+          translation: '',
+          memo: ''
+        });
+      }
+    }
+    return result;
+  };
+
+  // VTT (WebVTT) Parser
+  const parseVTTContent = (text) => {
+    const cleanText = text.replace(/^WEBVTT.*/i, '').trim();
+    return parseSRTContent(cleanText);
+  };
+
+  // ASS / SSA Parser
+  const parseASSContent = (text) => {
+    const lines = text.split('\n');
+    const result = [];
+    lines.forEach((line) => {
+      if (line.startsWith('Dialogue:')) {
+        const parts = line.substring(9).split(',');
+        if (parts.length >= 10) {
+          const startStr = parts[1].trim();
+          const endStr = parts[2].trim();
+          const body = parts.slice(9).join(',').replace(/\{[^}]+\}/g, '').trim();
+          const parseTime = (str) => {
+            const [h, m, s] = str.split(':');
+            return parseFloat(h) * 3600 + parseFloat(m) * 60 + parseFloat(s);
+          };
+          if (body) {
+            result.push({
+              id: result.length + 1,
+              start: parseTime(startStr),
+              end: parseTime(endStr),
+              text: body,
+              translation: '',
+              memo: ''
+            });
+          }
+        }
+      }
+    });
+    return result;
+  };
+
+  // CSV / TSV Parser
+  const parseCSVContent = (text) => {
+    const lines = text.trim().split('\n');
+    const result = [];
+    lines.forEach((line, idx) => {
+      const cols = line.split(/[\t,]/);
+      if (cols.length >= 2) {
+        const start = parseFloat(cols[0]) || idx * 3;
+        const end = parseFloat(cols[1]) || start + 3;
+        const body = cols.slice(2).join(' ').trim() || cols[0];
+        result.push({
+          id: idx + 1,
+          start,
+          end,
+          text: body,
+          translation: '',
+          memo: ''
+        });
+      }
+    });
+    return result;
   };
 
   const parseSRTContent = (text) => {
@@ -210,6 +363,8 @@ export default function Home() {
         const parts = clean.split(':');
         if (parts.length === 3) {
           return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+        } else if (parts.length === 2) {
+          return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
         }
         return 0;
       };

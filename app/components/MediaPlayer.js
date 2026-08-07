@@ -231,6 +231,11 @@ export default function MediaPlayer({
               <option value="1.0" style={{ background: '#121524' }}>1.0x (일반)</option>
               <option value="1.25" style={{ background: '#121524' }}>1.25x 속도</option>
               <option value="1.5" style={{ background: '#121524' }}>1.5x 속도</option>
+              <option value="1.75" style={{ background: '#121524' }}>1.75x 속도</option>
+              <option value="2.0" style={{ background: '#121524' }}>2.0x 속도</option>
+              <option value="2.25" style={{ background: '#121524' }}>2.25x 속도</option>
+              <option value="2.5" style={{ background: '#121524' }}>2.5x 속도</option>
+              <option value="3.0" style={{ background: '#121524' }}>3.0x 속도</option>
             </select>
 
             {/* English Subtitle Toggle */}

@@ -50,7 +50,15 @@
 - **단독 어학기 standalone 앱 실행 모드**:
   - `실행하기.bat` 및 `run.bat`에 `--app=http://localhost:3000` 옵션 적용. 웹 브라우저 탭, 주소창, 북마크 바 없이 순수 전용 데스크톱 어학기 앱 형태로 바로 실행.
 
+### 8) UI 배율/글자 2x~1.5x 확대, 재생속도, 유니버설 자막 파서 및 무설치 포터블 ZIP 배포 완성
+- **재생 속도 조절 0.5x ~ 3.0x**: `MediaPlayer.js`에 0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 1.75x, 2.0x, 2.25x, 2.5x, 3.0x 조절 옵션 탑재.
+- **기본 100% 화면 배율 핏팅**: `page.js` 디폴트 `playerSizePercent`를 100%로 설정.
+- **헤더/컨트롤바/대본 폰트 & UI 요소 2x/1.5x 스케일업**: `Header.js`, `NativeBoxPlayer.js`, `SubtitleScriptViewer.js` 내 버튼, 아이콘, 체크박스 및 글자 크기 시각적 시원함 확보.
+- **유니버설 자막 파서 (Universal Subtitle Engine)**: `SRT`, `SMI/SAMI`, `WebVTT`, `ASS/SSA`, `JSON/NBC`, `CSV/TSV` 등 모든 자막 파일 형식 자동 파싱 및 연동 지원.
+- **자막 갱신 및 삭제 버퍼 버그 수정**: 영상 삭제/전환 시 이전 자막이 메모리에 남아있던 버그 완전 해결.
+- **무설치 배포 파일 생성**: `dist/NativeBOX_AI_Player.zip` (Node.js 미설치 환경에서도 `NativeBOX_AI_Player.exe` 더블클릭만으로 무설치 포터블 구동).
+
 ## 3. 검증 결과
 - Next.js 프로덕션 정적 빌드(`npm run build`) 성공 (오류 0건).
-- Electron 포터블 실행 파일 패키징(`npm run dist`) 성공.
+- Electron 포터블 실행 파일 패키징(`npm run dist`) 및 ZIP 압축 완료.
 - GitHub `main` 브랜치 자동 병합 및 Remote Sync 완료.

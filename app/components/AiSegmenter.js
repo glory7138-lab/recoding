@@ -334,7 +334,17 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
     return new Promise((resolve, reject) => {
       if (workerRef.current) workerRef.current.terminate();
 
-      const worker = new Worker(new URL('../workers/whisper.worker.js', import.meta.url));
+      let worker;
+      try {
+        worker = new Worker(new URL('../workers/whisper.worker.js', import.meta.url));
+      } catch (e) {
+        try {
+          worker = new Worker('./whisper-worker.js');
+        } catch (e2) {
+          reject(new Error('AI 인식 워커 스크립트를 로드할 수 없습니다.'));
+          return;
+        }
+      }
       workerRef.current = worker;
 
       worker.onmessage = (e) => {
@@ -356,7 +366,7 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
 
       worker.onerror = (err) => {
         worker.terminate();
-        reject(new Error(`WebWorker 오류: ${err.message}`));
+        reject(new Error(`WebWorker 오류: ${err.message || '알 수 없는 오류'}`));
       };
 
       worker.postMessage({ type: 'LOAD_MODEL', payload: { modelSize } });

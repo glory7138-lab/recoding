@@ -34,32 +34,33 @@ export default function Header({
 
   return (
     <header className="app-header" style={{
-      padding: '8px 20px',
+      padding: '12px 28px',
+      height: '76px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 16,
-      background: 'rgba(15, 23, 42, 0.8)',
+      gap: 20,
+      background: 'rgba(15, 23, 42, 0.85)',
       backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.25)'
+      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+      boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
     }}>
       {/* Zone 1: Brand Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div className="brand-logo" style={{ gap: 8, cursor: 'pointer' }} title="NativeBOX AI Player v1.0">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="NativeBOX AI Player v1.0">
           <div style={{
             background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            width: 32,
-            height: 32,
-            borderRadius: 8,
+            width: 44,
+            height: 44,
+            borderRadius: 12,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 12px rgba(59, 130, 246, 0.4)'
+            boxShadow: '0 0 16px rgba(59, 130, 246, 0.4)'
           }}>
-            <Sparkles size={17} color="#fff" />
+            <Sparkles size={24} color="#fff" />
           </div>
-          <span style={{ fontSize: 15, fontWeight: '800', letterSpacing: '-0.3px', color: '#f8fafc' }}>
+          <span style={{ fontSize: 22, fontWeight: '800', letterSpacing: '-0.3px', color: '#f8fafc' }}>
             NativeBOX <span style={{ color: '#38bdf8' }}>AI</span>
           </span>
         </div>
@@ -69,46 +70,46 @@ export default function Header({
       {setActiveTab && (
         <div style={{
           display: 'flex',
-          gap: 4,
+          gap: 8,
           alignItems: 'center',
           background: 'rgba(0,0,0,0.4)',
-          padding: '3px',
-          borderRadius: 10,
-          border: '1px solid rgba(255,255,255,0.08)'
+          padding: '6px',
+          borderRadius: 12,
+          border: '1px solid rgba(255,255,255,0.1)'
         }}>
           <button
             className={`nb-bevel-btn ${activeTab === 'nativebox' ? 'active-green' : ''}`}
-            style={{ padding: '5px 12px', fontSize: 11, fontWeight: '700', borderRadius: 7 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 15, fontWeight: '700', borderRadius: 8 }}
             onClick={() => setActiveTab('nativebox')}
             title="NativeBOX 메인 레트로 플레이어 뷰"
           >
-            <Sliders size={13} />
+            <Sliders size={18} />
             <span>레트로 스킨 뷰</span>
           </button>
           <button
             className={`nb-bevel-btn ${activeTab === 'editor' ? 'active-blue' : ''}`}
-            style={{ padding: '5px 12px', fontSize: 11, fontWeight: '700', borderRadius: 7 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 15, fontWeight: '700', borderRadius: 8 }}
             onClick={() => setActiveTab('editor')}
             title="타임라인 대본 에디터 뷰"
           >
-            <ListFilter size={13} />
+            <ListFilter size={18} />
             <span>자막 에디터</span>
           </button>
           <button
             className={`nb-bevel-btn ${activeTab === 'ai' ? 'pressed' : ''}`}
-            style={{ padding: '5px 12px', fontSize: 11, fontWeight: '700', borderRadius: 7 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 15, fontWeight: '700', borderRadius: 8 }}
             onClick={() => setActiveTab('ai')}
-            title="AI 브라우저 음성 인식 문장 분할기"
+            title="AI 음성인식 대사 파싱 도구"
           >
-            <Cpu size={13} color="#a78bfa" />
+            <Cpu size={18} />
             <span>AI 문장 분할기</span>
           </button>
         </div>
       )}
 
-      {/* Zone 3: Essential Top Action Buttons (Right Group) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Open New Media Button */}
+      {/* Zone 3: Global Media / Subtitle Import & Export Action Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Media File Open Button */}
         <div>
           <input
             type="file"
@@ -117,8 +118,8 @@ export default function Header({
             style={{ display: 'none' }}
             onChange={handleMediaFileChange}
           />
-          <label htmlFor="header-media-input" className="btn-icon" style={{ padding: '5px 11px', fontSize: 11, cursor: 'pointer', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.35)', color: '#93c5fd' }}>
-            <FolderOpen size={14} color="#60a5fa" />
+          <label htmlFor="header-media-input" className="nb-bevel-btn" style={{ padding: '8px 16px', fontSize: 14, fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgba(59, 130, 246, 0.35)', color: '#93c5fd' }}>
+            <FolderOpen size={18} color="#60a5fa" />
             <span>동영상 열기</span>
           </label>
         </div>
@@ -127,26 +128,31 @@ export default function Header({
         <div>
           <input
             type="file"
-            accept=".srt,.smi,.txt"
+            accept="*/*,.srt,.smi,.vtt,.ass,.ssa,.txt,.json,.nbc,.tsv,.csv"
             id="header-subtitle-input"
             style={{ display: 'none' }}
             onChange={handleSubtitleFileChange}
           />
-          <label htmlFor="header-subtitle-input" className="btn-icon" style={{ padding: '5px 11px', fontSize: 11, cursor: 'pointer', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#6ee7b7' }}>
-            <FileText size={14} color="#34d399" />
+          <label htmlFor="header-subtitle-input" className="nb-bevel-btn" style={{ padding: '8px 16px', fontSize: 14, fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.35)', color: '#6ee7b7' }}>
+            <FileText size={18} color="#34d399" />
             <span>자막 불러오기</span>
           </label>
         </div>
 
         {/* Export Subtitle Button */}
-        <button className="btn-icon btn-primary" onClick={onExportClick} style={{ padding: '5px 13px', fontSize: 11, fontWeight: 'bold' }} title="현재 파싱된 자막을 .srt / .smi 자막 파일 또는 .json 프로젝트 파일로 다운로드합니다.">
-          <Download size={14} />
+        <button className="nb-bevel-btn active-blue" onClick={onExportClick} style={{ padding: '8px 18px', fontSize: 14, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 8 }} title="내보내기">
+          <Download size={18} />
           <span>내보내기</span>
         </button>
 
-        {/* Help Guide Button */}
-        <button className="btn-icon" onClick={onOpenGuide} style={{ padding: '5px 9px', fontSize: 11, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} title="NativeBOX 사용 방법 가이드">
-          <HelpCircle size={14} color="#cbd5e1" />
+        {/* User Guide Button */}
+        <button
+          className="nb-bevel-btn"
+          onClick={onOpenGuide}
+          style={{ padding: '8px 12px' }}
+          title="사용법 안내"
+        >
+          <HelpCircle size={20} color="#94a3b8" />
         </button>
       </div>
     </header>
