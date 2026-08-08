@@ -1,10 +1,20 @@
-# Media & Subtitle Storage Directory
+# Media Storage (영상 & 자막 통합 보관함)
 
-새로운 동영상과 자막 파일을 이곳에 보관하여 관리할 수 있습니다.
+영상과 자막 파일을 **동일한 폴더**에 동일한 이름으로 저장하세요.
 
-## 폴더 구조
-- `media/videos/` : 공부하거나 자막을 생성할 **동영상/오디오 파일** (.mp4, .m4a, .mp3, .wav 등)
-- `media/subtitles/` : 생성되거나 편집 완료된 **자막 파일** (.srt, .smi, .vtt, .json, .nbc 등)
+## 파일 네이밍 규칙
+```
+media/
+├── ATM Er Rak Error.mp4     ← 영상
+├── ATM Er Rak Error.srt     ← 자막 (동일 이름, 다른 확장자)
+├── intern.mp4
+├── intern.json
+├── sample.mp4
+└── sample.srt
+```
 
-## 사용 팁
-- NativeBOX AI Player 웹 화면 우측 상단 **`[ 📁 미디어 선택 ]`** 또는 **`[ 📝 자막 선택 ]`** 버튼을 누른 후, 이 폴더의 파일들을 선택하여 바로 재생 및 자막 학습을 진행할 수 있습니다.
+## 통합 로드 버튼 사용법
+NativeBOX AI Player 상단 헤더의 **`[ 🎬 영상+자막 로드 ]`** 버튼:
+1. 버튼 클릭 → 영상 파일 선택 (mp4 등)
+2. 같은 이름의 자막 파일 선택 (srt/smi/json 등)
+3. **`[ ✅ 로드 ]`** 버튼 클릭 → 영상과 자막이 동시에 플레이어에 연결됩니다.
