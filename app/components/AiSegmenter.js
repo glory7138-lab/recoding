@@ -242,19 +242,9 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
     if (file) handleFileChange(file);
   };
 
-  // Auto-load saved API key from localStorage when engine changes
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedKey = localStorage.getItem(`nativebox_${selectedEngine}_key`) || '';
-      setApiKey(savedKey);
-    }
-  }, [selectedEngine]);
-
+  // Keep API key in component memory state only (not saved to localStorage for security)
   const handleApiKeyChange = (val) => {
     setApiKey(val);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`nativebox_${selectedEngine}_key`, val.trim());
-    }
   };
 
   // ── OPENAI ENGINE ──

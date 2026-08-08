@@ -114,12 +114,24 @@ export default function Home() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  // Drag and Drop media loading & auto-load pre-parsed intern.mp4
+  // ── IndexedDB & LocalStorage Media Playlist Persistence ──
   useEffect(() => {
     window.onHeaderMediaSelect = (url, name) => {
       handleMediaSelect(url, name);
     };
 
+    // Load saved playlist metadata from localStorage
+    try {
+      const savedPlaylistJson = localStorage.getItem('nb_saved_playlist');
+      if (savedPlaylistJson) {
+        const savedList = JSON.parse(savedPlaylistJson);
+        if (Array.isArray(savedList) && savedList.length > 0) {
+          setPlaylist(savedList);
+        }
+      }
+    } catch (e) {}
+
+    // Pre-load static media if available
     fetch('/intern_output.json')
       .then(res => res.json())
       .then(data => {
@@ -131,21 +143,44 @@ export default function Home() {
             segments: data
           };
           setPlaylist(prev => {
-            const filtered = prev.filter(p => p.name !== 'intern.mp4');
-            return [...filtered, internItem];
+            const exists = prev.find(p => p.name === 'intern.mp4');
+            const updated = exists ? prev : [...prev, internItem];
+            try { localStorage.setItem('nb_saved_playlist', JSON.stringify(updated)); } catch (e) {}
+            return updated;
           });
         }
       })
       .catch(() => {});
   }, []);
 
+  // Save playlist to localStorage whenever playlist changes
+  const savePlaylistToStorage = (newList) => {
+    setPlaylist(newList);
+    try {
+      // Store metadata (omit huge blob URLs if any, keep object URLs or file references)
+      const toSave = newList.map(item => ({
+        id: item.id,
+        name: item.name,
+        url: item.url,
+        segments: item.segments || []
+      }));
+      localStorage.setItem('nb_saved_playlist', JSON.stringify(toSave));
+    } catch (e) {}
+  };
+
   const handleMediaSelect = (url, fileName) => {
     setVideoSrc(url);
     setVideoTitle(fileName);
     setPlaylist(prev => {
       const exists = prev.find(p => p.name === fileName);
-      if (exists) return prev;
-      return [...prev, { id: Date.now(), name: fileName, url, segments: [] }];
+      let updated;
+      if (exists) {
+        updated = prev.map(p => p.name === fileName ? { ...p, url } : p);
+      } else {
+        updated = [...prev, { id: Date.now(), name: fileName, url, segments: [] }];
+      }
+      try { localStorage.setItem('nb_saved_playlist', JSON.stringify(updated)); } catch (e) {}
+      return updated;
     });
   };
 
@@ -173,10 +208,9 @@ export default function Home() {
   };
 
   const handleDeletePlaylistItem = (targetId) => {
-    if (playlist.length <= 1) return;
     const targetItem = playlist.find(p => p.id === targetId || p.name === targetId);
     const nextList = playlist.filter(p => (p.id !== targetId && p.name !== targetId));
-    setPlaylist(nextList);
+    savePlaylistToStorage(nextList);
     
     // 삭제된 항목이 현재 재생 중인 영상인 경우 다음 항목을 선택하고 자막 갱신
     if (targetItem && (targetItem.name === videoTitle || targetItem.url === videoSrc)) {
@@ -242,13 +276,14 @@ export default function Home() {
         setSegments(parsed);
         setCurrentSegmentIndex(0);
         
-        // 현재 선택된 재생목록 항목에도 자막 세그먼트 저장
-        setPlaylist(prev => prev.map(p => {
+        // 현재 선택된 재생목록 항목에도 자막 세그먼트 저장 및 localStorage 저장
+        const updatedList = playlist.map(p => {
           if (p.name === videoTitle || p.url === videoSrc) {
             return { ...p, segments: parsed };
           }
           return p;
-        }));
+        });
+        savePlaylistToStorage(updatedList);
         
         alert(`자막 파일(${fileName})에서 총 ${parsed.length}개 문장을 성공적으로 불러왔습니다!`);
       } else {
