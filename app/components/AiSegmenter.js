@@ -289,44 +289,133 @@ export default function AiSegmenter({ onSegmentsGenerated, onMediaLoaded }) {
   // ── HF ENGINE ──
   const runHuggingFace = async (file) => {
     if (!apiKey.trim()) throw new Error('Hugging Face 토큰을 입력해주세요.');
-    addLog('🚀 Hugging Face Whisper Cloud API 호출 중...');
-    setProgress(40);
 
-    const arrayBuffer = await file.arrayBuffer();
-    const res = await fetch(
-      'https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey.trim()}`,
-          'Content-Type': 'audio/flac',
-        },
-        body: arrayBuffer,
+    // Determine language code for Whisper
+    const langCodeMap = {
+      english: 'english', thai: 'thai', japanese: 'japanese',
+      chinese: 'chinese', korean: 'korean', french: 'french', spanish: 'spanish'
+    };
+    const whisperLang = langCodeMap[sourceLang] || 'english';
+    addLog(`🚀 Hugging Face Whisper Cloud API 호출 중... [언어: ${whisperLang}]`);
+    setProgress(30);
+
+    // ── Step 1: Try JSON body with return_timestamps + language hint ──
+    let data = null;
+    let usedJsonMode = false;
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const jsonRes = await fetch(
+        'https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey.trim()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inputs: base64,
+            parameters: {
+              language: whisperLang,
+              return_timestamps: true,
+              task: 'transcribe',
+            },
+          }),
+        }
+      );
+      if (jsonRes.ok) {
+        data = await jsonRes.json();
+        usedJsonMode = true;
+        addLog(`✅ JSON 모드 응답 수신 (타임스탬프 포함)`);
+      } else {
+        addLog(`⚠️ JSON 모드 실패 (${jsonRes.status}), 바이너리 모드로 재시도...`);
       }
-    );
-
-    if (!res.ok) {
-      const errText = await res.text();
-      let msg = `Hugging Face API 오류 (${res.status})`;
-      try {
-        const parsed = JSON.parse(errText);
-        if (parsed.error) msg = `Hugging Face 오류: ${parsed.error}`;
-      } catch {}
-      throw new Error(msg);
+    } catch (e) {
+      addLog(`⚠️ JSON 모드 오류: ${e.message}, 바이너리 모드로 재시도...`);
     }
 
-    const data = await res.json();
+    // ── Step 2: Fallback to binary body ──
+    if (!data) {
+      const arrayBuffer = await file.arrayBuffer();
+      const res = await fetch(
+        'https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey.trim()}`,
+            'Content-Type': 'audio/mpeg',
+          },
+          body: arrayBuffer,
+        }
+      );
+      if (!res.ok) {
+        const errText = await res.text();
+        let msg = `Hugging Face API 오류 (${res.status})`;
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.error) msg = `Hugging Face 오류: ${parsed.error}`;
+        } catch {}
+        throw new Error(msg);
+      }
+      data = await res.json();
+      addLog(`✅ 바이너리 모드 응답 수신`);
+    }
+
     setProgress(75);
 
-    const fullText = typeof data === 'string' ? data : data.text || '';
-    addLog(`✅ HF 음성 인식 완료! (${fullText.length}자)`);
+    // ── Parse chunks with timestamps (JSON mode returns { chunks: [{timestamp:[s,e], text}] }) ──
+    if (usedJsonMode && data.chunks && Array.isArray(data.chunks) && data.chunks.length > 0) {
+      addLog(`✅ 타임스탬프 기반 세그먼트 파싱 (${data.chunks.length}개)`);
+      return data.chunks.map((chunk, i) => ({
+        text: (chunk.text || '').trim(),
+        start: Array.isArray(chunk.timestamp) ? (chunk.timestamp[0] ?? i * 3) : (i * 3),
+        end: Array.isArray(chunk.timestamp) ? (chunk.timestamp[1] ?? (i + 1) * 3) : ((i + 1) * 3),
+      })).filter(c => c.text);
+    }
 
-    const sentences = fullText.match(/[^.!?]+[.!?]+/g) || [fullText];
+    // ── Fallback: split fullText by language-aware rules ──
+    const fullText = typeof data === 'string' ? data : (data.text || '');
+    addLog(`⚠️ 타임스탬프 없음. 텍스트 규칙 분할 (${fullText.length}자)`);
+
+    let sentences;
+    if (sourceLang === 'thai') {
+      // Thai: no sentence-ending punctuation; split by Thai-specific patterns:
+      // Thai full stop '।', double-space, line break, or every ~60 characters at word boundary
+      const thaiFull = fullText
+        .replace(/\s*\n\s*/g, '\n')
+        .split(/(?<=\s{2,})|(?<=\u0E4F)|(?<=\u0E2F)|(?<=\.\s)|(?<=!\s)|(?<=\?\s)|\n/)
+        .map(s => s.trim())
+        .filter(s => s.length > 1);
+
+      // If split produced only 1 chunk, chunk by ~50 Thai characters
+      if (thaiFull.length <= 1 && fullText.length > 50) {
+        sentences = [];
+        let remaining = fullText.trim();
+        while (remaining.length > 0) {
+          let chunk = remaining.slice(0, 60);
+          // Try to break at a space near char 60
+          const lastSpace = chunk.lastIndexOf(' ');
+          if (lastSpace > 20 && remaining.length > 60) {
+            chunk = chunk.slice(0, lastSpace);
+          }
+          sentences.push(chunk.trim());
+          remaining = remaining.slice(chunk.length).trim();
+        }
+      } else {
+        sentences = thaiFull;
+      }
+    } else {
+      // English / other: standard sentence boundary
+      sentences = fullText.match(/[^.!?。！？]+[.!?。！？]+/g) || [fullText];
+    }
+
+    const avgDuration = 3.5; // average seconds per sentence estimate
     return sentences.map((s, i) => ({
       text: s.trim(),
-      start: i * 4,
-      end: (i + 1) * 4,
-    }));
+      start: Math.round(i * avgDuration * 10) / 10,
+      end: Math.round((i + 1) * avgDuration * 10) / 10,
+    })).filter(c => c.text);
   };
 
   // ── LOCAL ENGINE (WebWorker + transformers.js CDN) ──
