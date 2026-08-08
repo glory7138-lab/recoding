@@ -36,8 +36,9 @@ export default function NativeBoxPlayer({
   const [repeatTargetCount, setRepeatTargetCountState] = useState('infinite'); // 'infinite' | 1 | 2 | 3 ... 10
   const [repeatCurrentCount, setRepeatCurrentCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [playbackRate, setPlaybackRateState] = useState(1.0); // '0.5' ~ '3.0'
 
-  // Load saved repeat count and sidebar state from localStorage on mount
+  // Load saved repeat count, sidebar state, and playback rate from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('nb_repeat_target_count');
@@ -55,6 +56,10 @@ export default function NativeBoxPlayer({
       if (savedSidebar !== null) {
         setIsSidebarOpen(savedSidebar === 'true');
       }
+      const savedRate = localStorage.getItem('nb_playback_rate');
+      if (savedRate !== null && !isNaN(Number(savedRate))) {
+        setPlaybackRateState(Number(savedRate));
+      }
     } catch (e) {}
   }, []);
 
@@ -62,6 +67,17 @@ export default function NativeBoxPlayer({
     setRepeatTargetCountState(val);
     try {
       localStorage.setItem('nb_repeat_target_count', String(val));
+    } catch (e) {}
+  };
+
+  const handleSpeedChange = (speed) => {
+    const rate = Number(speed);
+    setPlaybackRateState(rate);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = rate;
+    }
+    try {
+      localStorage.setItem('nb_playback_rate', String(rate));
     } catch (e) {}
   };
 
@@ -272,7 +288,12 @@ export default function NativeBoxPlayer({
             src={videoSrc || '/sample.mp4'}
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={() => setDuration(videoRef.current ? videoRef.current.duration : 0)}
+            onLoadedMetadata={() => {
+              if (videoRef.current) {
+                setDuration(videoRef.current.duration);
+                videoRef.current.playbackRate = playbackRate;
+              }
+            }}
             onClick={togglePlay}
           />
 
@@ -614,8 +635,8 @@ export default function NativeBoxPlayer({
       {/* 3. Integrated Bottom Toolbar (Timeline Scrubber matches exact video screen width) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isSidebarOpen ? '1fr 290px' : '1fr 250px',
-        gap: 10,
+        gridTemplateColumns: isSidebarOpen ? '1fr 435px' : '1fr',
+        gap: 12,
         alignItems: 'center',
         padding: '6px 8px',
         background: 'rgba(15, 23, 42, 0.5)',
@@ -648,7 +669,7 @@ export default function NativeBoxPlayer({
           />
         </div>
 
-        {/* Play / Pause, Stop & Volume Controls (Perfectly balanced with Repeat Card above) */}
+        {/* Playback Speed, Play / Pause, Stop & Volume Controls */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -657,8 +678,41 @@ export default function NativeBoxPlayer({
           padding: '6px 10px',
           borderRadius: 8,
           border: '1px solid rgba(255,255,255,0.06)',
-          width: '100%'
+          width: '100%',
+          gap: 8
         }}>
+          {/* Playback Speed Select (Placed RIGHT IN FRONT of Play Button!) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="재생 속도 조절 (0.5배속 ~ 3.0배속)">
+            <span style={{ fontSize: 11, fontWeight: '800', color: '#10b981' }}>⚡배속:</span>
+            <select
+              value={playbackRate}
+              onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
+              className="nb-bevel-btn"
+              style={{
+                padding: '4px 6px',
+                fontSize: 12,
+                fontWeight: '800',
+                color: '#10b981',
+                background: '#0f172a',
+                border: '1.5px solid #10b981',
+                borderRadius: 6,
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value={0.5}>0.5배속</option>
+              <option value={0.75}>0.75배속</option>
+              <option value={1.0}>1.0배속 (표준)</option>
+              <option value={1.25}>1.25배속</option>
+              <option value={1.5}>1.5배속</option>
+              <option value={1.75}>1.75배속</option>
+              <option value={2.0}>2.0배속</option>
+              <option value={2.25}>2.25배속</option>
+              <option value={2.5}>2.5배속</option>
+              <option value={3.0}>3.0배속</option>
+            </select>
+          </div>
+
           {/* Play / Pause & Stop Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1.2 }}>
             <button
@@ -681,7 +735,7 @@ export default function NativeBoxPlayer({
           </div>
 
           {/* Volume Control Slider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end', marginLeft: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end', marginLeft: 4 }}>
             <Volume2 size={13} color="#94a3b8" />
             <input
               type="range"
@@ -694,7 +748,7 @@ export default function NativeBoxPlayer({
                 setVolume(v);
                 if (videoRef.current) videoRef.current.volume = v;
               }}
-              style={{ width: '100%', maxWidth: 90, accentColor: '#10b981', cursor: 'pointer', height: 4 }}
+              style={{ width: '100%', maxWidth: 75, accentColor: '#10b981', cursor: 'pointer', height: 4 }}
               title="음량 조절"
             />
           </div>
