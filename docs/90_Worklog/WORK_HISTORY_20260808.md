@@ -14,7 +14,10 @@
 
 ### 2) 비디오 타임라인 Scrubber 바 가로폭 1:1 핏팅
 - `app/components/NativeBoxPlayer.js`:
-  - 하단 제어 툴바의 grid 컬럼 비율을 `gridTemplateColumns: isSidebarOpen ? '1fr 435px' : '1fr'`로 조정하여, 왼쪽 타임라인 Scrubber 바 가로폭(`1fr`)이 **상단 비디오 스크린 뷰어(`1fr`) 가로폭과 100% 정확하게 일치**하도록 정렬.
+### 3) 영상 파일 제목 앞 언어 이니셜 아이콘 배지(`[ENG]`, `[THA]`, `[KOR]` 등) 자동 감지 및 수동 전환 탑재
+- `app/components/NativeBoxPlayer.js`:
+  - 플레이어 상단 파일 제목 바로 앞에 언어 이니셜 아이콘 배지(`[ENG] 🇺🇸 영어 회화`, `[THA] 🇹🇭 태국어 회화`, `[KOR] 🇰🇷 한국어`, `[JPN] 🇯🇵 일본어 회화`, `[CHN] 🇨🇳 중국어 회화`) 추가.
+  - 파일명 및 자막 유니코드 문자를 자동 탐지하여 언어를 기본 할당하며, 아이콘 배지 클릭 시 즉시 수동으로 언어 태그를 전환할 수 있도록 구현.
 
 ## 3. 검증 결과
 - Next.js 프로덕션 정적 빌드(`npm run build`) 성공 (오류 0건).

@@ -81,6 +81,96 @@ export default function NativeBoxPlayer({
     } catch (e) {}
   };
 
+  // Language initial badge state ('ENG' | 'THA' | 'KOR' | 'JPN' | 'CHN')
+  const [selectedLang, setSelectedLang] = useState(null);
+
+  // Auto-detect language if not manually overridden by user
+  const getEffectiveLang = () => {
+    if (selectedLang) return selectedLang;
+
+    const titleLower = (videoTitle || '').toLowerCase();
+    if (titleLower.includes('thai') || titleLower.includes('th') || titleLower.includes('태국') || titleLower.includes('태국어')) {
+      return 'THA';
+    }
+    if (titleLower.includes('kor') || titleLower.includes('kr') || titleLower.includes('한국어') || titleLower.includes('한글')) {
+      return 'KOR';
+    }
+    if (titleLower.includes('jp') || titleLower.includes('japan') || titleLower.includes('일본어') || titleLower.includes('일어')) {
+      return 'JPN';
+    }
+    if (titleLower.includes('cn') || titleLower.includes('china') || titleLower.includes('중국어') || titleLower.includes('중어')) {
+      return 'CHN';
+    }
+
+    // Check subtitle segments character set
+    if (segments && segments.length > 0) {
+      const sample = segments.slice(0, 8).map(s => s.text || '').join(' ');
+      if (/[\u0E00-\u0E7F]/.test(sample)) {
+        return 'THA';
+      }
+      if (/[\u3040-\u30FF\u31F0-\u31FF]/.test(sample)) {
+        return 'JPN';
+      }
+      if (/[\u4E00-\u9FFF]/.test(sample)) {
+        return 'CHN';
+      }
+      if (/[\uAC00-\uD7AF]/.test(sample)) {
+        return 'KOR';
+      }
+    }
+
+    return 'ENG';
+  };
+
+  const currentLang = getEffectiveLang();
+
+  const getLangBadgeStyle = (lang) => {
+    switch (lang) {
+      case 'THA':
+        return {
+          bg: 'linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #f59e0b 100%)',
+          flag: '🇹🇭',
+          code: 'THA',
+          name: '태국어 회화'
+        };
+      case 'KOR':
+        return {
+          bg: 'linear-gradient(135deg, #065f46 0%, #10b981 100%)',
+          flag: '🇰🇷',
+          code: 'KOR',
+          name: '한국어'
+        };
+      case 'JPN':
+        return {
+          bg: 'linear-gradient(135deg, #9d174d 0%, #f43f5e 100%)',
+          flag: '🇯🇵',
+          code: 'JPN',
+          name: '일본어 회화'
+        };
+      case 'CHN':
+        return {
+          bg: 'linear-gradient(135deg, #854d0e 0%, #eab308 100%)',
+          flag: '🇨🇳',
+          code: 'CHN',
+          name: '중국어 회화'
+        };
+      case 'ENG':
+      default:
+        return {
+          bg: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+          flag: '🇺🇸',
+          code: 'ENG',
+          name: '영어 회화'
+        };
+    }
+  };
+
+  const toggleLanguageMode = () => {
+    const modes = ['ENG', 'THA', 'KOR', 'JPN', 'CHN'];
+    const nextIdx = (modes.indexOf(currentLang) + 1) % modes.length;
+    setSelectedLang(modes[nextIdx]);
+  };
+
   // Calculate range timestamps if checkboxes are selected
   const hasChecked = checkedIndices && checkedIndices.length > 0 && segments && segments.length > 0;
   const minCheckedIdx = hasChecked ? Math.min(...checkedIndices) : null;
@@ -238,8 +328,34 @@ export default function NativeBoxPlayer({
     <div className="nb-panel-outset" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* 1. Top Header Bar (Doubled Font & Element Sizes) */}
       <div className="nb-header-bar" style={{ minHeight: 48, padding: '8px 14px' }}>
-        <div className="nb-header-title" style={{ gap: 14 }}>
+        <div className="nb-header-title" style={{ gap: 10, display: 'flex', alignItems: 'center' }}>
           <span className="nb-brand-name" style={{ fontSize: 20, fontWeight: '800' }}>NativeBOX AI Player</span>
+          
+          {/* 🌐 Language Initial Icon Badge (ENG / THA / KOR / JPN / CHN) */}
+          <button
+            onClick={toggleLanguageMode}
+            style={{
+              background: getLangBadgeStyle(currentLang).bg,
+              color: '#ffffff',
+              border: '1.5px solid rgba(255, 255, 255, 0.4)',
+              borderRadius: 7,
+              padding: '3px 9px',
+              fontSize: 13,
+              fontWeight: '800',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+              transition: 'all 0.2s ease'
+            }}
+            title="클릭 시 언어 표시 수동 전환 (ENG 영어 회화 | THA 태국어 회화 | KOR 한국어 | JPN 일본어 | CHN 중국어)"
+          >
+            <span style={{ fontSize: 14 }}>{getLangBadgeStyle(currentLang).flag}</span>
+            <span style={{ letterSpacing: '0.5px' }}>[{getLangBadgeStyle(currentLang).code}]</span>
+            <span style={{ fontSize: 11, opacity: 0.9, fontWeight: '700' }}>{getLangBadgeStyle(currentLang).name}</span>
+          </button>
+
           <span className="nb-file-title" style={{ fontSize: 16, padding: '4px 12px' }}>{videoTitle || '[null]'}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
