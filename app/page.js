@@ -73,12 +73,12 @@ export default function Home() {
       setSeekTrigger({ time: segments[idx].start, ts: Date.now() });
     }
   };
-  const [screenMode, setScreenMode] = useState('normal'); // 'normal' | 'big' | 'full' | 'caption'
-  const [captionMode, setCaptionMode] = useState('EK'); // 'X' | 'E' | 'K' | 'EK'
+  const [screenMode, setScreenModeState] = useState('normal'); // 'normal' | 'big' | 'full' | 'caption'
+  const [captionMode, setCaptionModeState] = useState('EK'); // 'X' | 'E' | 'K' | 'EK'
   const [fontSize, setFontSizeState] = useState(14); // Font size in pixels (default 14px for 4-item view)
   const [playerSizePercent, setPlayerSizePercentState] = useState(100); // Player width size % (60%~140%)
 
-  // Load saved font size and player screen size from localStorage on mount
+  // Load saved font size, player screen size, caption mode, screen mode from localStorage on mount
   useEffect(() => {
     try {
       const savedFont = localStorage.getItem('nb_font_size');
@@ -90,6 +90,14 @@ export default function Home() {
         setPlayerSizePercentState(Number(savedPlayerSize));
       } else {
         setPlayerSizePercentState(100);
+      }
+      const savedCaption = localStorage.getItem('nb_caption_mode');
+      if (savedCaption) {
+        setCaptionModeState(savedCaption);
+      }
+      const savedScreen = localStorage.getItem('nb_screen_mode');
+      if (savedScreen) {
+        setScreenModeState(savedScreen);
       }
     } catch (e) {}
   }, []);
@@ -107,6 +115,20 @@ export default function Home() {
     setPlayerSizePercentState(val);
     try {
       localStorage.setItem('nb_player_size', String(val));
+    } catch (e) {}
+  };
+
+  const setCaptionMode = (mode) => {
+    setCaptionModeState(mode);
+    try {
+      localStorage.setItem('nb_caption_mode', String(mode));
+    } catch (e) {}
+  };
+
+  const setScreenMode = (mode) => {
+    setScreenModeState(mode);
+    try {
+      localStorage.setItem('nb_screen_mode', String(mode));
     } catch (e) {}
   };
   const [showContentsList, setShowContentsList] = useState(true);

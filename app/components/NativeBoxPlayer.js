@@ -61,7 +61,7 @@ export default function NativeBoxPlayer({
     };
   }, [playerSizePercent, isSidebarOpen]);
 
-  // Load saved repeat count, sidebar state, and playback rate from localStorage on mount
+  // Load saved repeat count, sidebar state, playback rate, and volume from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('nb_repeat_target_count');
@@ -83,8 +83,25 @@ export default function NativeBoxPlayer({
       if (savedRate !== null && !isNaN(Number(savedRate))) {
         setPlaybackRateState(Number(savedRate));
       }
+      const savedVol = localStorage.getItem('nb_player_volume');
+      if (savedVol !== null && !isNaN(Number(savedVol))) {
+        const v = Math.max(0, Math.min(1, Number(savedVol)));
+        setVolume(v);
+        if (videoRef.current) videoRef.current.volume = v;
+      }
     } catch (e) {}
   }, []);
+
+  const handleVolumeChange = (v) => {
+    const val = Math.max(0, Math.min(1, v));
+    setVolume(val);
+    if (videoRef.current) {
+      videoRef.current.volume = val;
+    }
+    try {
+      localStorage.setItem('nb_player_volume', String(val));
+    } catch (e) {}
+  };
 
   const setRepeatTargetCount = (val) => {
     setRepeatTargetCountState(val);
@@ -434,6 +451,7 @@ export default function NativeBoxPlayer({
               if (videoRef.current) {
                 setDuration(videoRef.current.duration);
                 videoRef.current.playbackRate = playbackRate;
+                videoRef.current.volume = volume;
               }
             }}
             onClick={togglePlay}
@@ -909,8 +927,7 @@ export default function NativeBoxPlayer({
               value={volume}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
-                setVolume(v);
-                if (videoRef.current) videoRef.current.volume = v;
+                handleVolumeChange(v);
               }}
               style={{ width: '100%', maxWidth: 75, accentColor: '#10b981', cursor: 'pointer', height: 4 }}
               title="음량 조절"
