@@ -115,23 +115,104 @@ export default function Home() {
   const [showGuideModal, setShowGuideModal] = useState(false);
 
   // ── IndexedDB & LocalStorage Media Playlist Persistence ──
+  const DB_NAME = 'NativeBOX_DB';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'playlist';
+
+  const openDB = () => {
+    return new Promise((resolve, reject) => {
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        return reject(new Error('IndexedDB not supported'));
+      }
+      const req = window.indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'name' });
+        }
+      };
+      req.onsuccess = (e) => resolve(e.target.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  };
+
+  const savePlaylistItemDB = async (item) => {
+    try {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(item.name);
+      getReq.onsuccess = () => {
+        const existing = getReq.result || {};
+        store.put({
+          id: item.id || existing.id || Date.now(),
+          name: item.name,
+          fileBlob: item.fileBlob !== undefined ? item.fileBlob : (existing.fileBlob || null),
+          url: item.url || existing.url || '',
+          segments: item.segments !== undefined ? item.segments : (existing.segments || [])
+        });
+      };
+    } catch (e) {
+      console.error('IndexedDB save error:', e);
+    }
+  };
+
+  const loadAllPlaylistItemsDB = async () => {
+    try {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      return new Promise((resolve) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const deletePlaylistItemDB = async (name) => {
+    try {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete(name);
+    } catch (e) {}
+  };
+
   useEffect(() => {
-    window.onHeaderMediaSelect = (url, name) => {
-      handleMediaSelect(url, name);
+    window.onHeaderMediaSelect = (url, name, fileBlob) => {
+      handleMediaSelect(url, name, fileBlob);
     };
 
-    // Load saved playlist metadata from localStorage
-    try {
-      const savedPlaylistJson = localStorage.getItem('nb_saved_playlist');
-      if (savedPlaylistJson) {
-        const savedList = JSON.parse(savedPlaylistJson);
-        if (Array.isArray(savedList) && savedList.length > 0) {
-          setPlaylist(savedList);
+    // Load saved playlist and video blobs from IndexedDB on mount
+    loadAllPlaylistItemsDB().then(dbItems => {
+      if (Array.isArray(dbItems) && dbItems.length > 0) {
+        const restored = dbItems.map(item => {
+          let liveUrl = item.url;
+          if (item.fileBlob) {
+            liveUrl = URL.createObjectURL(item.fileBlob);
+          }
+          return {
+            id: item.id || item.name,
+            name: item.name,
+            url: liveUrl,
+            fileBlob: item.fileBlob,
+            segments: item.segments || []
+          };
+        });
+
+        setPlaylist(restored);
+        if (restored[0]) {
+          setVideoSrc(restored[0].url);
+          setVideoTitle(restored[0].name);
+          setSegments(restored[0].segments || []);
         }
       }
-    } catch (e) {}
+    });
 
-    // Pre-load static media if available
+    // Pre-load static sample media if available
     fetch('/intern_output.json')
       .then(res => res.json())
       .then(data => {
@@ -144,44 +225,28 @@ export default function Home() {
           };
           setPlaylist(prev => {
             const exists = prev.find(p => p.name === 'intern.mp4');
-            const updated = exists ? prev : [...prev, internItem];
-            try { localStorage.setItem('nb_saved_playlist', JSON.stringify(updated)); } catch (e) {}
-            return updated;
+            return exists ? prev : [...prev, internItem];
           });
         }
       })
       .catch(() => {});
   }, []);
 
-  // Save playlist to localStorage whenever playlist changes
-  const savePlaylistToStorage = (newList) => {
-    setPlaylist(newList);
-    try {
-      // Store metadata (omit huge blob URLs if any, keep object URLs or file references)
-      const toSave = newList.map(item => ({
-        id: item.id,
-        name: item.name,
-        url: item.url,
-        segments: item.segments || []
-      }));
-      localStorage.setItem('nb_saved_playlist', JSON.stringify(toSave));
-    } catch (e) {}
-  };
-
-  const handleMediaSelect = (url, fileName) => {
+  const handleMediaSelect = (url, fileName, fileBlob = null) => {
     setVideoSrc(url);
     setVideoTitle(fileName);
     setPlaylist(prev => {
       const exists = prev.find(p => p.name === fileName);
       let updated;
       if (exists) {
-        updated = prev.map(p => p.name === fileName ? { ...p, url } : p);
+        updated = prev.map(p => p.name === fileName ? { ...p, url, fileBlob: fileBlob || p.fileBlob } : p);
       } else {
-        updated = [...prev, { id: Date.now(), name: fileName, url, segments: [] }];
+        updated = [...prev, { id: Date.now(), name: fileName, url, fileBlob, segments: [] }];
       }
-      try { localStorage.setItem('nb_saved_playlist', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
+
+    savePlaylistItemDB({ name: fileName, url, fileBlob, segments: [] });
   };
 
   const handleSelectPlaylistItem = (item) => {
@@ -199,9 +264,13 @@ export default function Home() {
       if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
         const url = URL.createObjectURL(file);
-        const newItem = { id: Date.now(), name: file.name, url, segments: [] };
-        setPlaylist(prev => [...prev, newItem]);
+        const newItem = { id: Date.now(), name: file.name, url, fileBlob: file, segments: [] };
+        setPlaylist(prev => {
+          const filtered = prev.filter(p => p.name !== file.name);
+          return [...filtered, newItem];
+        });
         handleSelectPlaylistItem(newItem);
+        savePlaylistItemDB({ name: file.name, url, fileBlob: file, segments: [] });
       }
     };
     input.click();
@@ -210,7 +279,10 @@ export default function Home() {
   const handleDeletePlaylistItem = (targetId) => {
     const targetItem = playlist.find(p => p.id === targetId || p.name === targetId);
     const nextList = playlist.filter(p => (p.id !== targetId && p.name !== targetId));
-    savePlaylistToStorage(nextList);
+    setPlaylist(nextList);
+    if (targetItem) {
+      deletePlaylistItemDB(targetItem.name);
+    }
     
     // 삭제된 항목이 현재 재생 중인 영상인 경우 다음 항목을 선택하고 자막 갱신
     if (targetItem && (targetItem.name === videoTitle || targetItem.url === videoSrc)) {
@@ -276,14 +348,15 @@ export default function Home() {
         setSegments(parsed);
         setCurrentSegmentIndex(0);
         
-        // 현재 선택된 재생목록 항목에도 자막 세그먼트 저장 및 localStorage 저장
+        // 현재 선택된 재생목록 항목에도 자막 세그먼트 저장 및 IndexedDB 저장
         const updatedList = playlist.map(p => {
           if (p.name === videoTitle || p.url === videoSrc) {
+            savePlaylistItemDB({ name: p.name, segments: parsed });
             return { ...p, segments: parsed };
           }
           return p;
         });
-        savePlaylistToStorage(updatedList);
+        setPlaylist(updatedList);
         
         alert(`자막 파일(${fileName})에서 총 ${parsed.length}개 문장을 성공적으로 불러왔습니다!`);
       } else {

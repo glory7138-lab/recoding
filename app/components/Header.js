@@ -40,7 +40,7 @@ export default function Header({
 
   const handleLoad = () => {
     if (pendingVideo) {
-      onMediaSelect(pendingVideo.url, pendingVideo.name);
+      onMediaSelect(pendingVideo.url, pendingVideo.name, pendingVideo.file);
     }
     if (pendingSubtitle) {
       onSubtitleSelect(pendingSubtitle.content, pendingSubtitle.name);
