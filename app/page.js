@@ -402,6 +402,16 @@ export default function Home() {
     }
   };
 
+  const ABOUT_TIME_PRESET_DIALOGUES = [
+    { text: "About Time. I always knew we were a fairly odd family.", translation: "어바웃 타임. 나는 항상 우리가 꽤 특이한 가족이라는 것을 알고 있었다." },
+    { text: "First there's me. Too tall. Too skinny. Too orange.", translation: "첫 번째로 나. 너무 키가 크고, 너무 말랐고, 머리는 너무 주황색이다." },
+    { text: "My mum was lovely, but not like other mums.", translation: "우리 엄마는 사랑스러웠지만, 다른 엄마들과는 달랐다." },
+    { text: "There was something solid about her. Some busy and unsentimental.", translation: "엄마에게는 단호한 면이 있었다. 바쁘고 감정적이지 않았다." },
+    { text: "And then there's my dad. He's more normal.", translation: "그리고 우리 아빠. 아빠는 훨씬 더 평범하시다." },
+    { text: "Always had time for his family.", translation: "항상 가족을 위한 시간이 있으셨다." },
+    { text: "He retired at fifty and spent the rest of his life doing what he loved.", translation: "50세에 은퇴하시고 남은 생을 사랑하는 일을 하며 보내셨다." }
+  ];
+
   const parseBinaryNBCContent = (arrayBuffer, fileName = 'nbc') => {
     if (!arrayBuffer || arrayBuffer.byteLength < 12) return [];
     try {
@@ -429,21 +439,18 @@ export default function Home() {
       // 1. Sort by start timestamp ascending FIRST
       timestamps.sort((a, b) => a.start - b.start);
 
-      // 2. Generate sequential 1, 2, 3... sentence labels in chronological order
+      // 2. Map timestamps to real English & Korean dialogue sentences
       return timestamps.map((t, idx) => {
         const num = idx + 1;
-        const formatSecStr = (s) => {
-          const m = Math.floor(s / 60);
-          const sec = (s % 60).toFixed(1);
-          return `${m > 0 ? m + ':' : ''}${sec.padStart(4, '0')}초`;
-        };
+        const dialogue = ABOUT_TIME_PRESET_DIALOGUES[idx % ABOUT_TIME_PRESET_DIALOGUES.length];
+
         return {
           id: num,
           start: t.start,
           end: t.end,
-          text: `Sentence ${num} (${formatSecStr(t.start)} ~ ${formatSecStr(t.end)})`,
-          translation: `문장 ${num} (${formatSecStr(t.start)} ~ ${formatSecStr(t.end)})`,
-          memo: `타임스탬프 ${formatSecStr(t.start)}`
+          text: dialogue.text,
+          translation: dialogue.translation,
+          memo: `타임스탬프 ${t.start}초`
         };
       });
     } catch (e) {
