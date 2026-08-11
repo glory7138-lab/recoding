@@ -402,6 +402,41 @@ export default function Home() {
     }
   };
 
+  const parseBinaryNBCContent = (arrayBuffer, fileName = 'nbc') => {
+    if (!arrayBuffer || arrayBuffer.byteLength < 12) return [];
+    try {
+      const dataView = new DataView(arrayBuffer);
+      const len = arrayBuffer.byteLength;
+      const extracted = [];
+
+      for (let i = 0; i <= len - 8; i += 2) {
+        try {
+          const startSec = dataView.getFloat32(i, true);
+          const endSec = dataView.getFloat32(i + 4, true);
+
+          if (startSec >= 0.1 && endSec > startSec + 0.3 && endSec <= startSec + 45 && endSec < 3600) {
+            const isDup = extracted.some(seg => Math.abs(seg.start - startSec) < 0.1);
+            if (!isDup) {
+              const idx = extracted.length + 1;
+              extracted.push({
+                id: idx,
+                start: Number(startSec.toFixed(2)),
+                end: Number(endSec.toFixed(2)),
+                text: `대사 ${idx} (${startSec.toFixed(1)}s - ${endSec.toFixed(1)}s)`,
+                translation: `문장 ${idx} (${startSec.toFixed(1)}초 ~ ${endSec.toFixed(1)}초)`
+              });
+            }
+          }
+        } catch (e) {}
+      }
+
+      extracted.sort((a, b) => a.start - b.start);
+      return extracted.map((item, idx) => ({ ...item, id: idx + 1 }));
+    } catch (e) {
+      return [];
+    }
+  };
+
   const parseSubtitleFileContent = (fileContent, fileName) => {
     let parsed = [];
     const trimmed = (fileContent || '').trim();
@@ -500,6 +535,12 @@ export default function Home() {
         try {
           const subText = await readTextFileWithEncoding(matchedSubFile);
           parsedSegments = parseSubtitleFileContent(subText, matchedSubFile.name);
+
+          // Fallback: If text parsing returned 0 segments for binary .nbc file, decode binary buffer
+          if (parsedSegments.length === 0 && matchedSubFile.name.toLowerCase().endsWith('.nbc')) {
+            const arrayBuffer = await matchedSubFile.arrayBuffer();
+            parsedSegments = parseBinaryNBCContent(arrayBuffer, matchedSubFile.name);
+          }
         } catch (e) {}
       }
 
@@ -530,7 +571,12 @@ export default function Home() {
       const subFile = subFiles[0];
       try {
         const subText = await readTextFileWithEncoding(subFile);
-        const parsed = parseSubtitleFileContent(subText, subFile.name);
+        let parsed = parseSubtitleFileContent(subText, subFile.name);
+
+        if (parsed.length === 0 && subFile.name.toLowerCase().endsWith('.nbc')) {
+          const arrayBuffer = await subFile.arrayBuffer();
+          parsed = parseBinaryNBCContent(arrayBuffer, subFile.name);
+        }
         if (parsed.length > 0) {
           setSegments(parsed);
           setCurrentSegmentIndex(0);
