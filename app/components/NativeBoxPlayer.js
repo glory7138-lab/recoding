@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Play, Pause, Square, FileText, ChevronLeft, ChevronRight, Volume2, Plus, List, CheckCircle2, Music, Trash2, Monitor } from 'lucide-react';
+import { Play, Pause, Square, FileText, ChevronLeft, ChevronRight, Volume2, Plus, List, CheckCircle2, Music, Trash2, Monitor, Film } from 'lucide-react';
 
 export default function NativeBoxPlayer({
   videoSrc,
@@ -515,12 +515,22 @@ export default function NativeBoxPlayer({
                 </div>
                 <button
                   className="nb-bevel-btn active-green"
-                  style={{ padding: '2px 7px', fontSize: 12, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 3 }}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'linear-gradient(135deg, rgba(16,185,129,0.3) 0%, rgba(59,130,246,0.3) 100%)',
+                    borderColor: '#10b981',
+                    color: '#34d399'
+                  }}
                   onClick={onAddFile}
-                  title="새 파일 추가"
+                  title="동영상 및 자막 파일 한꺼번에 동시 로드"
                 >
-                  <Plus size={13} />
-                  <span>추가</span>
+                  <Film size={13} color="#34d399" />
+                  <span>🎬 영상+자막 로드</span>
                 </button>
               </div>
 

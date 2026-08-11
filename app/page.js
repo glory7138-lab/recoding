@@ -219,16 +219,10 @@ export default function Home() {
       if (savedJson) {
         const parsed = JSON.parse(savedJson);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          initialList = parsed.map(item => {
-            let liveUrl = item.url;
-            if (item.filePath) {
-              liveUrl = item.filePath.startsWith('file://') ? item.filePath : `file:///${item.filePath.replace(/\\/g, '/')}`;
-            }
-            return {
-              ...item,
-              url: liveUrl
-            };
-          });
+          initialList = parsed.map(item => ({
+            ...item,
+            url: item.url || ''
+          }));
           setPlaylist(initialList);
           if (initialList[0]) {
             setVideoSrc(initialList[0].url);
@@ -247,12 +241,13 @@ export default function Home() {
             const existingInPrev = prev.find(p => p.name === dbItem.name);
             let liveUrl = (existingInPrev && existingInPrev.url) || dbItem.url;
             
-            if (dbItem.filePath) {
-              liveUrl = dbItem.filePath.startsWith('file://') ? dbItem.filePath : `file:///${dbItem.filePath.replace(/\\/g, '/')}`;
-            } else if (dbItem.fileBlob) {
+            // Prioritize URL.createObjectURL from stored fileBlob for 100% HTML5 video compatibility
+            if (dbItem.fileBlob) {
               try {
                 liveUrl = URL.createObjectURL(dbItem.fileBlob);
               } catch (e) {}
+            } else if (dbItem.filePath && !liveUrl) {
+              liveUrl = dbItem.filePath.startsWith('file://') ? dbItem.filePath : `file:///${dbItem.filePath.replace(/\\/g, '/')}`;
             }
 
             return {
@@ -273,7 +268,11 @@ export default function Home() {
           });
 
           if (mergedList[0]) {
-            setVideoSrc(mergedList[0].url);
+            let activeUrl = mergedList[0].url;
+            if (mergedList[0].fileBlob) {
+              try { activeUrl = URL.createObjectURL(mergedList[0].fileBlob); } catch (e) {}
+            }
+            setVideoSrc(activeUrl);
             setVideoTitle(mergedList[0].name);
             setSegments(mergedList[0].segments || []);
           }
@@ -307,28 +306,34 @@ export default function Home() {
   }, []);
 
   const handleMediaSelect = (url, fileName, fileBlob = null) => {
+    let playableUrl = url;
+    if (fileBlob) {
+      try { playableUrl = URL.createObjectURL(fileBlob); } catch (e) {}
+    }
     const filePath = (fileBlob && fileBlob.path) || '';
-    setVideoSrc(url);
+    setVideoSrc(playableUrl);
     setVideoTitle(fileName);
     setPlaylist(prev => {
       const exists = prev.find(p => p.name === fileName);
       let updated;
       if (exists) {
-        updated = prev.map(p => p.name === fileName ? { ...p, url, filePath: filePath || p.filePath, fileBlob: fileBlob || p.fileBlob } : p);
+        updated = prev.map(p => p.name === fileName ? { ...p, url: playableUrl, filePath: filePath || p.filePath, fileBlob: fileBlob || p.fileBlob } : p);
       } else {
-        updated = [...prev, { id: Date.now(), name: fileName, url, filePath, fileBlob, segments: [] }];
+        updated = [...prev, { id: Date.now(), name: fileName, url: playableUrl, filePath, fileBlob, segments: [] }];
       }
       syncPlaylistStorage(updated);
       return updated;
     });
 
-    savePlaylistItemDB({ name: fileName, url, filePath, fileBlob, segments: [] });
+    savePlaylistItemDB({ name: fileName, url: playableUrl, filePath, fileBlob, segments: [] });
   };
 
   const handleSelectPlaylistItem = (item) => {
     let liveUrl = item.url;
-    if (item.filePath) {
-      liveUrl = item.filePath.startsWith('file://') ? item.filePath : `file:///${item.filePath.replace(/\\/g, '/')}`;
+    if (item.fileBlob) {
+      try {
+        liveUrl = URL.createObjectURL(item.fileBlob);
+      } catch (e) {}
     }
     setVideoSrc(liveUrl);
     setVideoTitle(item.name);
@@ -409,11 +414,8 @@ export default function Home() {
     let activeSegments = [];
 
     for (const mediaFile of mediaFiles) {
-      let url = URL.createObjectURL(mediaFile);
+      const url = URL.createObjectURL(mediaFile);
       const filePath = mediaFile.path || '';
-      if (filePath) {
-        url = filePath.startsWith('file://') ? filePath : `file:///${filePath.replace(/\\/g, '/')}`;
-      }
 
       const baseName = mediaFile.name.substring(0, mediaFile.name.lastIndexOf('.')) || mediaFile.name;
       
