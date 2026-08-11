@@ -18,6 +18,17 @@ export default function Header({
   const [pendingSubtitle, setPendingSubtitle] = useState(null); // { content, name }
   const videoInputRef = useRef(null);
   const subtitleInputRef = useRef(null);
+  const multiFileInputRef = useRef(null);
+
+  const handleMultiFileSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      if (window.onHeaderMultiFileLoad) {
+        window.onHeaderMultiFileLoad(e.target.files);
+      }
+      setShowLoader(false);
+      e.target.value = '';
+    }
+  };
 
   const handleVideoSelect = (e) => {
     const file = e.target.files[0];
@@ -198,9 +209,40 @@ export default function Header({
             </button>
           </div>
 
-          <p style={{ fontSize: 12, color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-            💡 <code style={{ color: '#38bdf8', fontSize: 11 }}>media/</code> 폴더에서 같은 이름의 영상+자막 파일을 각각 선택하세요.<br />
-            예: <code style={{ color: '#10b981', fontSize: 11 }}>ATM Er Rak Error.mp4</code> + <code style={{ color: '#10b981', fontSize: 11 }}>ATM Er Rak Error.srt</code>
+          {/* 🔥 1-Click Multi-File Simultaneous Select Button */}
+          <div>
+            <input
+              type="file"
+              multiple
+              accept="video/*,audio/*,.mp4,.mkv,.avi,.mov,.webm,.mp3,.wav,.m4a,.json,.nbc,.smi,.vtt,.ass,.ssa,.srt,.csv,.tsv"
+              ref={multiFileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleMultiFileSelect}
+            />
+            <button
+              className="nb-bevel-btn active-green"
+              style={{
+                width: '100%',
+                padding: '10px 0',
+                fontSize: 13,
+                fontWeight: '800',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                background: 'linear-gradient(135deg, rgba(16,185,129,0.3) 0%, rgba(59,130,246,0.3) 100%)',
+                border: '1.5px solid #10b981',
+                boxShadow: '0 4px 14px rgba(16,185,129,0.3)'
+              }}
+              onClick={() => multiFileInputRef.current?.click()}
+            >
+              <FolderOpen size={18} color="#34d399" />
+              <span>⚡ 영상 & 자막 동시 한꺼번에 선택 (추천)</span>
+            </button>
+          </div>
+
+          <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
+            💡 파일 창이 열리면 <code style={{ color: '#34d399', fontSize: 11 }}>Ctrl+클릭</code>으로 <code style={{ color: '#60a5fa', fontSize: 11 }}>동영상(.mp4)</code>과 <code style={{ color: '#34d399', fontSize: 11 }}>자막(.srt/.vtt/.json)</code>을 한꺼번에 함께 선택하세요!
           </p>
 
           {/* Step 1: Video */}

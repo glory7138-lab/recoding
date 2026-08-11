@@ -139,19 +139,25 @@ export default function Home() {
   const savePlaylistItemDB = async (item) => {
     try {
       const db = await openDB();
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const getReq = store.get(item.name);
-      getReq.onsuccess = () => {
-        const existing = getReq.result || {};
-        store.put({
-          id: item.id || existing.id || Date.now(),
-          name: item.name,
-          fileBlob: item.fileBlob !== undefined ? item.fileBlob : (existing.fileBlob || null),
-          url: item.url || existing.url || '',
-          segments: item.segments !== undefined ? item.segments : (existing.segments || [])
-        });
-      };
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const getReq = store.get(item.name);
+        getReq.onsuccess = () => {
+          const existing = getReq.result || {};
+          const merged = {
+            id: item.id || existing.id || Date.now(),
+            name: item.name,
+            fileBlob: item.fileBlob !== undefined && item.fileBlob !== null ? item.fileBlob : (existing.fileBlob || null),
+            url: item.url || existing.url || '',
+            segments: item.segments && item.segments.length > 0 ? item.segments : (existing.segments || [])
+          };
+          const putReq = store.put(merged);
+          putReq.onsuccess = () => resolve(merged);
+          putReq.onerror = (e) => reject(e);
+        };
+        getReq.onerror = (e) => reject(e);
+      });
     } catch (e) {
       console.error('IndexedDB save error:', e);
     }
@@ -160,9 +166,9 @@ export default function Home() {
   const loadAllPlaylistItemsDB = async () => {
     try {
       const db = await openDB();
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
       return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
         const req = store.getAll();
         req.onsuccess = () => resolve(req.result || []);
         req.onerror = () => resolve([]);
@@ -186,13 +192,19 @@ export default function Home() {
       handleMediaSelect(url, name, fileBlob);
     };
 
+    window.onHeaderMultiFileLoad = (fileList) => {
+      handleMultiFileLoad(fileList);
+    };
+
     // Load saved playlist and video blobs from IndexedDB on mount
     loadAllPlaylistItemsDB().then(dbItems => {
       if (Array.isArray(dbItems) && dbItems.length > 0) {
         const restored = dbItems.map(item => {
           let liveUrl = item.url;
           if (item.fileBlob) {
-            liveUrl = URL.createObjectURL(item.fileBlob);
+            try {
+              liveUrl = URL.createObjectURL(item.fileBlob);
+            } catch (e) {}
           }
           return {
             id: item.id || item.name,
@@ -256,21 +268,154 @@ export default function Home() {
     setCurrentSegmentIndex(0);
   };
 
+  const parseSubtitleFileContent = (fileContent, fileName) => {
+    let parsed = [];
+    const trimmed = (fileContent || '').trim();
+    const lowerName = (fileName || '').toLowerCase();
+    
+    // 1. JSON / NBC Format
+    if (lowerName.endsWith('.json') || lowerName.endsWith('.nbc') || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        const rawJson = JSON.parse(fileContent);
+        if (Array.isArray(rawJson)) {
+          parsed = rawJson.map((item, idx) => ({
+            id: item.id || idx + 1,
+            start: typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0,
+            end: typeof item.end === 'number' ? item.end : parseFloat(item.end) || 0,
+            text: item.text || item.english || '',
+            translation: item.translation || item.korean || '',
+            memo: item.memo || ''
+          }));
+        }
+      } catch (err) {}
+    }
+
+    // 2. SMI / SAMI Subtitle Format
+    if (parsed.length === 0 && (lowerName.endsWith('.smi') || trimmed.toUpperCase().includes('<SAMI>'))) {
+      parsed = parseSMIContent(fileContent);
+    }
+
+    // 3. VTT (WebVTT) Subtitle Format
+    if (parsed.length === 0 && (lowerName.endsWith('.vtt') || trimmed.startsWith('WEBVTT'))) {
+      parsed = parseVTTContent(fileContent);
+    }
+
+    // 4. ASS / SSA Subtitle Format
+    if (parsed.length === 0 && (lowerName.endsWith('.ass') || lowerName.endsWith('.ssa') || trimmed.includes('[Script Info]'))) {
+      parsed = parseASSContent(fileContent);
+    }
+
+    // 5. CSV / TSV Format
+    if (parsed.length === 0 && (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv'))) {
+      parsed = parseCSVContent(fileContent);
+    }
+
+    // 6. Standard SRT & Fallback Text Format
+    if (parsed.length === 0) {
+      parsed = parseSRTContent(fileContent);
+    }
+
+    return parsed;
+  };
+
+  // 🔥 1-Click Multi-File Simultaneous Select Handler
+  const handleMultiFileLoad = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    const mediaExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.mp3', '.wav', '.m4a'];
+    const subExtensions = ['.json', '.nbc', '.smi', '.vtt', '.ass', '.ssa', '.srt', '.csv', '.tsv'];
+
+    const mediaFiles = files.filter(f => {
+      const lower = f.name.toLowerCase();
+      return f.type.startsWith('video/') || f.type.startsWith('audio/') || mediaExtensions.some(ext => lower.endsWith(ext));
+    });
+
+    const subFiles = files.filter(f => {
+      const lower = f.name.toLowerCase();
+      return subExtensions.some(ext => lower.endsWith(ext));
+    });
+
+    let activeMediaName = '';
+    let activeMediaUrl = '';
+    let activeSegments = [];
+
+    for (const mediaFile of mediaFiles) {
+      const url = URL.createObjectURL(mediaFile);
+      const baseName = mediaFile.name.substring(0, mediaFile.name.lastIndexOf('.')) || mediaFile.name;
+      
+      let matchedSubFile = subFiles.find(sf => {
+        const sBase = sf.name.substring(0, sf.name.lastIndexOf('.')) || sf.name;
+        return sBase.toLowerCase() === baseName.toLowerCase();
+      });
+
+      if (!matchedSubFile && subFiles.length === 1 && mediaFiles.length === 1) {
+        matchedSubFile = subFiles[0];
+      }
+
+      let parsedSegments = [];
+      if (matchedSubFile) {
+        try {
+          const subText = await matchedSubFile.text();
+          parsedSegments = parseSubtitleFileContent(subText, matchedSubFile.name);
+        } catch (e) {}
+      }
+
+      const item = {
+        id: Date.now() + Math.random(),
+        name: mediaFile.name,
+        url,
+        fileBlob: mediaFile,
+        segments: parsedSegments
+      };
+
+      setPlaylist(prev => {
+        const filtered = prev.filter(p => p.name !== mediaFile.name);
+        return [...filtered, item];
+      });
+
+      await savePlaylistItemDB(item);
+
+      activeMediaName = mediaFile.name;
+      activeMediaUrl = url;
+      activeSegments = parsedSegments;
+    }
+
+    if (mediaFiles.length === 0 && subFiles.length > 0) {
+      const subFile = subFiles[0];
+      try {
+        const subText = await subFile.text();
+        const parsed = parseSubtitleFileContent(subText, subFile.name);
+        if (parsed.length > 0) {
+          setSegments(parsed);
+          setCurrentSegmentIndex(0);
+          setPlaylist(prev => prev.map(p => {
+            if (p.name === videoTitle || p.url === videoSrc) {
+              savePlaylistItemDB({ name: p.name, segments: parsed });
+              return { ...p, segments: parsed };
+            }
+            return p;
+          }));
+          alert(`자막 파일(${subFile.name}) ${parsed.length}개 문장을 불러왔습니다!`);
+        }
+      } catch (e) {}
+    } else if (activeMediaName) {
+      setVideoTitle(activeMediaName);
+      setVideoSrc(activeMediaUrl);
+      setSegments(activeSegments);
+      setCurrentSegmentIndex(0);
+      alert(`🎬 영상(${activeMediaName}) 및 자막(${activeSegments.length}개 문장)이 성공적으로 로드 및 저장되었습니다!`);
+    }
+  };
+
   const handleAddFileToPlaylist = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'video/*,audio/*';
+    input.multiple = true;
+    input.accept = 'video/*,audio/*,.mp4,.mkv,.avi,.mov,.webm,.mp3,.wav,.m4a,.json,.nbc,.smi,.vtt,.ass,.ssa,.srt,.csv,.tsv';
     input.onchange = (e) => {
-      if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        const url = URL.createObjectURL(file);
-        const newItem = { id: Date.now(), name: file.name, url, fileBlob: file, segments: [] };
-        setPlaylist(prev => {
-          const filtered = prev.filter(p => p.name !== file.name);
-          return [...filtered, newItem];
-        });
-        handleSelectPlaylistItem(newItem);
-        savePlaylistItemDB({ name: file.name, url, fileBlob: file, segments: [] });
+      if (e.target.files && e.target.files.length > 0) {
+        handleMultiFileLoad(e.target.files);
       }
     };
     input.click();
@@ -298,52 +443,7 @@ export default function Home() {
 
   const handleSubtitleSelect = (fileContent, fileName) => {
     try {
-      let parsed = [];
-      const trimmed = fileContent.trim();
-      const lowerName = fileName.toLowerCase();
-      
-      // 1. JSON / NBC Format
-      if (lowerName.endsWith('.json') || lowerName.endsWith('.nbc') || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-        try {
-          const rawJson = JSON.parse(fileContent);
-          if (Array.isArray(rawJson)) {
-            parsed = rawJson.map((item, idx) => ({
-              id: item.id || idx + 1,
-              start: typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0,
-              end: typeof item.end === 'number' ? item.end : parseFloat(item.end) || 0,
-              text: item.text || item.english || '',
-              translation: item.translation || item.korean || '',
-              memo: item.memo || ''
-            }));
-          }
-        } catch (err) {}
-      }
-
-      // 2. SMI / SAMI Subtitle Format
-      if (parsed.length === 0 && (lowerName.endsWith('.smi') || trimmed.toUpperCase().includes('<SAMI>'))) {
-        parsed = parseSMIContent(fileContent);
-      }
-
-      // 3. VTT (WebVTT) Subtitle Format
-      if (parsed.length === 0 && (lowerName.endsWith('.vtt') || trimmed.startsWith('WEBVTT'))) {
-        parsed = parseVTTContent(fileContent);
-      }
-
-      // 4. ASS / SSA Subtitle Format
-      if (parsed.length === 0 && (lowerName.endsWith('.ass') || lowerName.endsWith('.ssa') || trimmed.includes('[Script Info]'))) {
-        parsed = parseASSContent(fileContent);
-      }
-
-      // 5. CSV / TSV Format
-      if (parsed.length === 0 && (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv'))) {
-        parsed = parseCSVContent(fileContent);
-      }
-
-      // 6. Standard SRT & Fallback Text Format
-      if (parsed.length === 0) {
-        parsed = parseSRTContent(fileContent);
-      }
-
+      const parsed = parseSubtitleFileContent(fileContent, fileName);
       if (parsed && parsed.length > 0) {
         setSegments(parsed);
         setCurrentSegmentIndex(0);
