@@ -44,23 +44,13 @@ export default function Home() {
       text: "My mum was lovely, but not like other mums.",
       translation: "우리 엄마는 사랑스러웠지만, 다른 엄마들과는 달랐다.",
       memo: "엄마 소개"
-    },
-    {
-      id: 5,
-      start: 18.88,
-      end: 21.88,
-      text: "There was something solid about her. Some busy and unsentimental.",
-      translation: "엄마에게는 단호한 면이 있었다. 바쁘고 감정적이지 않았다.",
-      memo: "성격 묘사"
     }
   ];
 
-  const [playlist, setPlaylist] = useState([
-    { id: 'default', name: 'About.Time.2013[1].avi', url: '/sample.mp4', segments: initialSegments }
-  ]);
-  const [videoSrc, setVideoSrc] = useState('/sample.mp4');
-  const [videoTitle, setVideoTitle] = useState('About.Time.2013[1].avi');
-  const [segments, setSegments] = useState(initialSegments);
+  const [playlist, setPlaylist] = useState([]);
+  const [videoSrc, setVideoSrc] = useState('');
+  const [videoTitle, setVideoTitle] = useState('');
+  const [segments, setSegments] = useState([]);
 
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0);
   const [seekTrigger, setSeekTrigger] = useState(null);
@@ -167,23 +157,17 @@ export default function Home() {
       
       getReq.onsuccess = () => {
         const existing = getReq.result || {};
-        const filePath = item.filePath || (item.fileBlob && item.fileBlob.path) || existing.filePath || '';
-        const fileBlob = item.fileBlob !== undefined && item.fileBlob !== null ? item.fileBlob : (existing.fileBlob || null);
-        const segments = item.segments && item.segments.length > 0 ? item.segments : (existing.segments || []);
-        
-        const dataToSave = {
-          id: item.id || existing.id || Date.now(),
+        const updated = {
           name: item.name,
-          filePath,
-          fileBlob,
           url: item.url || existing.url || '',
-          segments
+          filePath: item.filePath || existing.filePath || '',
+          fileBlob: item.fileBlob || existing.fileBlob || null,
+          segments: item.segments && item.segments.length > 0 ? item.segments : (existing.segments || []),
+          updatedAt: Date.now()
         };
-        store.put(dataToSave);
+        store.put(updated);
       };
-    } catch (e) {
-      console.error('IndexedDB save error:', e);
-    }
+    } catch (e) {}
   };
 
   const loadAllPlaylistItemsDB = async () => {
@@ -222,6 +206,7 @@ export default function Home() {
         segments: item.segments || []
       }));
       localStorage.setItem('nb_saved_playlist', JSON.stringify(metadata));
+      localStorage.setItem('nb_saved_playlist_initialized', 'true');
     } catch (e) {}
   };
 
@@ -233,6 +218,8 @@ export default function Home() {
     window.onHeaderMultiFileLoad = (fileList) => {
       handleMultiFileLoad(fileList);
     };
+
+    const isInitialized = typeof window !== 'undefined' && localStorage.getItem('nb_saved_playlist_initialized') === 'true';
 
     // 1. Load synchronously from LocalStorage first
     let initialList = [];
@@ -255,76 +242,75 @@ export default function Home() {
       }
     } catch (e) {}
 
-    // 2. Load Blobs & items from IndexedDB asynchronously and merge
+    // 2. Load Blobs & items from IndexedDB asynchronously
     loadAllPlaylistItemsDB().then(dbItems => {
       if (Array.isArray(dbItems) && dbItems.length > 0) {
-        setPlaylist(prev => {
-          const mergedList = dbItems.map(dbItem => {
-            const existingInPrev = prev.find(p => p.name === dbItem.name);
-            let liveUrl = (existingInPrev && existingInPrev.url) || dbItem.url;
-            
-            // Prioritize URL.createObjectURL from stored fileBlob for 100% HTML5 video compatibility
-            if (dbItem.fileBlob) {
-              try {
-                liveUrl = URL.createObjectURL(dbItem.fileBlob);
-              } catch (e) {}
-            } else if (dbItem.filePath && !liveUrl) {
-              liveUrl = dbItem.filePath.startsWith('file://') ? dbItem.filePath : `file:///${dbItem.filePath.replace(/\\/g, '/')}`;
-            }
-
-            return {
-              id: dbItem.id || dbItem.name,
-              name: dbItem.name,
-              url: liveUrl,
-              filePath: dbItem.filePath || (dbItem.fileBlob && dbItem.fileBlob.path) || '',
-              fileBlob: dbItem.fileBlob || null,
-              segments: dbItem.segments && dbItem.segments.length > 0 ? dbItem.segments : (existingInPrev ? existingInPrev.segments : [])
-            };
-          });
-
-          // Keep any items in prev not present in DB
-          prev.forEach(pItem => {
-            if (!mergedList.find(m => m.name === pItem.name)) {
-              mergedList.push(pItem);
-            }
-          });
-
-          if (mergedList[0]) {
-            let activeUrl = mergedList[0].url;
-            if (mergedList[0].fileBlob) {
-              try { activeUrl = URL.createObjectURL(mergedList[0].fileBlob); } catch (e) {}
-            }
-            setVideoSrc(activeUrl);
-            setVideoTitle(mergedList[0].name);
-            setSegments(mergedList[0].segments || []);
+        const mergedList = dbItems.map(dbItem => {
+          let liveUrl = dbItem.url;
+          
+          if (dbItem.fileBlob) {
+            try {
+              liveUrl = URL.createObjectURL(dbItem.fileBlob);
+            } catch (e) {}
+          } else if (dbItem.filePath && !liveUrl) {
+            liveUrl = dbItem.filePath.startsWith('file://') ? dbItem.filePath : `file:///${dbItem.filePath.replace(/\\/g, '/')}`;
           }
 
-          syncPlaylistStorage(mergedList);
-          return mergedList;
+          return {
+            id: dbItem.id || dbItem.name,
+            name: dbItem.name,
+            url: liveUrl,
+            filePath: dbItem.filePath || (dbItem.fileBlob && dbItem.fileBlob.path) || '',
+            fileBlob: dbItem.fileBlob || null,
+            segments: dbItem.segments || []
+          };
         });
+
+        setPlaylist(mergedList);
+
+        if (mergedList[0]) {
+          let activeUrl = mergedList[0].url;
+          if (mergedList[0].fileBlob) {
+            try { activeUrl = URL.createObjectURL(mergedList[0].fileBlob); } catch (e) {}
+          }
+          setVideoSrc(activeUrl);
+          setVideoTitle(mergedList[0].name);
+          setSegments(mergedList[0].segments || []);
+        }
+
+        try {
+          const metadata = mergedList.map(item => ({
+            id: item.id,
+            name: item.name,
+            url: item.url,
+            filePath: item.filePath || '',
+            segments: item.segments || []
+          }));
+          localStorage.setItem('nb_saved_playlist', JSON.stringify(metadata));
+          localStorage.setItem('nb_saved_playlist_initialized', 'true');
+        } catch (e) {}
+      } else if (!isInitialized && initialList.length === 0) {
+        // Onboarding first launch: load static sample media
+        fetch('/intern_output.json')
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+              const internItem = {
+                id: 'intern-mp4',
+                name: 'intern.mp4',
+                url: '/intern.mp4',
+                segments: data
+              };
+              setPlaylist([internItem]);
+              setVideoSrc('/intern.mp4');
+              setVideoTitle('intern.mp4');
+              setSegments(data);
+              syncPlaylistStorage([internItem]);
+            }
+          })
+          .catch(() => {});
       }
     });
-
-    // 3. Pre-load static sample media if available
-    fetch('/intern_output.json')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          const internItem = {
-            id: 'intern-mp4',
-            name: 'intern.mp4',
-            url: '/intern.mp4',
-            segments: data
-          };
-          setPlaylist(prev => {
-            const exists = prev.find(p => p.name === 'intern.mp4');
-            const updated = exists ? prev : [...prev, internItem];
-            syncPlaylistStorage(updated);
-            return updated;
-          });
-        }
-      })
-      .catch(() => {});
   }, []);
 
   const handleMediaSelect = (url, fileName, fileBlob = null) => {
