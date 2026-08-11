@@ -37,3 +37,9 @@ auto-segmenter/ffmpeg.exe
 auto-segmenter/ffprobe.exe
 auto-segmenter/*.json
 auto-segmenter/*.zip
+
+# Temp packager folders
+my_tmp/
+tmp_packager/
+
+
