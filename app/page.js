@@ -139,25 +139,26 @@ export default function Home() {
   const savePlaylistItemDB = async (item) => {
     try {
       const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const getReq = store.get(item.name);
-        getReq.onsuccess = () => {
-          const existing = getReq.result || {};
-          const merged = {
-            id: item.id || existing.id || Date.now(),
-            name: item.name,
-            fileBlob: item.fileBlob !== undefined && item.fileBlob !== null ? item.fileBlob : (existing.fileBlob || null),
-            url: item.url || existing.url || '',
-            segments: item.segments && item.segments.length > 0 ? item.segments : (existing.segments || [])
-          };
-          const putReq = store.put(merged);
-          putReq.onsuccess = () => resolve(merged);
-          putReq.onerror = (e) => reject(e);
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(item.name);
+      
+      getReq.onsuccess = () => {
+        const existing = getReq.result || {};
+        const filePath = item.filePath || (item.fileBlob && item.fileBlob.path) || existing.filePath || '';
+        const fileBlob = item.fileBlob !== undefined && item.fileBlob !== null ? item.fileBlob : (existing.fileBlob || null);
+        const segments = item.segments && item.segments.length > 0 ? item.segments : (existing.segments || []);
+        
+        const dataToSave = {
+          id: item.id || existing.id || Date.now(),
+          name: item.name,
+          filePath,
+          fileBlob,
+          url: item.url || existing.url || '',
+          segments
         };
-        getReq.onerror = (e) => reject(e);
-      });
+        store.put(dataToSave);
+      };
     } catch (e) {
       console.error('IndexedDB save error:', e);
     }
@@ -187,6 +188,21 @@ export default function Home() {
     } catch (e) {}
   };
 
+  // Dual Persistence Sync (LocalStorage Metadata + IndexedDB Blobs)
+  const syncPlaylistStorage = (newList) => {
+    setPlaylist(newList);
+    try {
+      const metadata = newList.map(item => ({
+        id: item.id,
+        name: item.name,
+        url: item.url,
+        filePath: item.filePath || (item.fileBlob && item.fileBlob.path) || '',
+        segments: item.segments || []
+      }));
+      localStorage.setItem('nb_saved_playlist', JSON.stringify(metadata));
+    } catch (e) {}
+  };
+
   useEffect(() => {
     window.onHeaderMediaSelect = (url, name, fileBlob) => {
       handleMediaSelect(url, name, fileBlob);
@@ -196,35 +212,79 @@ export default function Home() {
       handleMultiFileLoad(fileList);
     };
 
-    // Load saved playlist and video blobs from IndexedDB on mount
+    // 1. Load synchronously from LocalStorage first
+    let initialList = [];
+    try {
+      const savedJson = localStorage.getItem('nb_saved_playlist');
+      if (savedJson) {
+        const parsed = JSON.parse(savedJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          initialList = parsed.map(item => {
+            let liveUrl = item.url;
+            if (item.filePath) {
+              liveUrl = item.filePath.startsWith('file://') ? item.filePath : `file:///${item.filePath.replace(/\\/g, '/')}`;
+            }
+            return {
+              ...item,
+              url: liveUrl
+            };
+          });
+          setPlaylist(initialList);
+          if (initialList[0]) {
+            setVideoSrc(initialList[0].url);
+            setVideoTitle(initialList[0].name);
+            setSegments(initialList[0].segments || []);
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 2. Load Blobs & items from IndexedDB asynchronously and merge
     loadAllPlaylistItemsDB().then(dbItems => {
       if (Array.isArray(dbItems) && dbItems.length > 0) {
-        const restored = dbItems.map(item => {
-          let liveUrl = item.url;
-          if (item.fileBlob) {
-            try {
-              liveUrl = URL.createObjectURL(item.fileBlob);
-            } catch (e) {}
-          }
-          return {
-            id: item.id || item.name,
-            name: item.name,
-            url: liveUrl,
-            fileBlob: item.fileBlob,
-            segments: item.segments || []
-          };
-        });
+        setPlaylist(prev => {
+          const mergedList = dbItems.map(dbItem => {
+            const existingInPrev = prev.find(p => p.name === dbItem.name);
+            let liveUrl = (existingInPrev && existingInPrev.url) || dbItem.url;
+            
+            if (dbItem.filePath) {
+              liveUrl = dbItem.filePath.startsWith('file://') ? dbItem.filePath : `file:///${dbItem.filePath.replace(/\\/g, '/')}`;
+            } else if (dbItem.fileBlob) {
+              try {
+                liveUrl = URL.createObjectURL(dbItem.fileBlob);
+              } catch (e) {}
+            }
 
-        setPlaylist(restored);
-        if (restored[0]) {
-          setVideoSrc(restored[0].url);
-          setVideoTitle(restored[0].name);
-          setSegments(restored[0].segments || []);
-        }
+            return {
+              id: dbItem.id || dbItem.name,
+              name: dbItem.name,
+              url: liveUrl,
+              filePath: dbItem.filePath || (dbItem.fileBlob && dbItem.fileBlob.path) || '',
+              fileBlob: dbItem.fileBlob || null,
+              segments: dbItem.segments && dbItem.segments.length > 0 ? dbItem.segments : (existingInPrev ? existingInPrev.segments : [])
+            };
+          });
+
+          // Keep any items in prev not present in DB
+          prev.forEach(pItem => {
+            if (!mergedList.find(m => m.name === pItem.name)) {
+              mergedList.push(pItem);
+            }
+          });
+
+          if (mergedList[0]) {
+            setVideoSrc(mergedList[0].url);
+            setVideoTitle(mergedList[0].name);
+            setSegments(mergedList[0].segments || []);
+          }
+
+          syncPlaylistStorage(mergedList);
+          return mergedList;
+        });
       }
     });
 
-    // Pre-load static sample media if available
+    // 3. Pre-load static sample media if available
     fetch('/intern_output.json')
       .then(res => res.json())
       .then(data => {
@@ -237,7 +297,9 @@ export default function Home() {
           };
           setPlaylist(prev => {
             const exists = prev.find(p => p.name === 'intern.mp4');
-            return exists ? prev : [...prev, internItem];
+            const updated = exists ? prev : [...prev, internItem];
+            syncPlaylistStorage(updated);
+            return updated;
           });
         }
       })
@@ -245,24 +307,30 @@ export default function Home() {
   }, []);
 
   const handleMediaSelect = (url, fileName, fileBlob = null) => {
+    const filePath = (fileBlob && fileBlob.path) || '';
     setVideoSrc(url);
     setVideoTitle(fileName);
     setPlaylist(prev => {
       const exists = prev.find(p => p.name === fileName);
       let updated;
       if (exists) {
-        updated = prev.map(p => p.name === fileName ? { ...p, url, fileBlob: fileBlob || p.fileBlob } : p);
+        updated = prev.map(p => p.name === fileName ? { ...p, url, filePath: filePath || p.filePath, fileBlob: fileBlob || p.fileBlob } : p);
       } else {
-        updated = [...prev, { id: Date.now(), name: fileName, url, fileBlob, segments: [] }];
+        updated = [...prev, { id: Date.now(), name: fileName, url, filePath, fileBlob, segments: [] }];
       }
+      syncPlaylistStorage(updated);
       return updated;
     });
 
-    savePlaylistItemDB({ name: fileName, url, fileBlob, segments: [] });
+    savePlaylistItemDB({ name: fileName, url, filePath, fileBlob, segments: [] });
   };
 
   const handleSelectPlaylistItem = (item) => {
-    setVideoSrc(item.url);
+    let liveUrl = item.url;
+    if (item.filePath) {
+      liveUrl = item.filePath.startsWith('file://') ? item.filePath : `file:///${item.filePath.replace(/\\/g, '/')}`;
+    }
+    setVideoSrc(liveUrl);
     setVideoTitle(item.name);
     setSegments(item.segments || []);
     setCurrentSegmentIndex(0);
@@ -341,7 +409,12 @@ export default function Home() {
     let activeSegments = [];
 
     for (const mediaFile of mediaFiles) {
-      const url = URL.createObjectURL(mediaFile);
+      let url = URL.createObjectURL(mediaFile);
+      const filePath = mediaFile.path || '';
+      if (filePath) {
+        url = filePath.startsWith('file://') ? filePath : `file:///${filePath.replace(/\\/g, '/')}`;
+      }
+
       const baseName = mediaFile.name.substring(0, mediaFile.name.lastIndexOf('.')) || mediaFile.name;
       
       let matchedSubFile = subFiles.find(sf => {
@@ -365,13 +438,16 @@ export default function Home() {
         id: Date.now() + Math.random(),
         name: mediaFile.name,
         url,
+        filePath,
         fileBlob: mediaFile,
         segments: parsedSegments
       };
 
       setPlaylist(prev => {
         const filtered = prev.filter(p => p.name !== mediaFile.name);
-        return [...filtered, item];
+        const updated = [...filtered, item];
+        syncPlaylistStorage(updated);
+        return updated;
       });
 
       await savePlaylistItemDB(item);
@@ -389,13 +465,17 @@ export default function Home() {
         if (parsed.length > 0) {
           setSegments(parsed);
           setCurrentSegmentIndex(0);
-          setPlaylist(prev => prev.map(p => {
-            if (p.name === videoTitle || p.url === videoSrc) {
-              savePlaylistItemDB({ name: p.name, segments: parsed });
-              return { ...p, segments: parsed };
-            }
-            return p;
-          }));
+          setPlaylist(prev => {
+            const updatedList = prev.map(p => {
+              if (p.name === videoTitle || p.url === videoSrc) {
+                savePlaylistItemDB({ name: p.name, segments: parsed });
+                return { ...p, segments: parsed };
+              }
+              return p;
+            });
+            syncPlaylistStorage(updatedList);
+            return updatedList;
+          });
           alert(`자막 파일(${subFile.name}) ${parsed.length}개 문장을 불러왔습니다!`);
         }
       } catch (e) {}
@@ -424,7 +504,7 @@ export default function Home() {
   const handleDeletePlaylistItem = (targetId) => {
     const targetItem = playlist.find(p => p.id === targetId || p.name === targetId);
     const nextList = playlist.filter(p => (p.id !== targetId && p.name !== targetId));
-    setPlaylist(nextList);
+    syncPlaylistStorage(nextList);
     if (targetItem) {
       deletePlaylistItemDB(targetItem.name);
     }
@@ -448,7 +528,6 @@ export default function Home() {
         setSegments(parsed);
         setCurrentSegmentIndex(0);
         
-        // 현재 선택된 재생목록 항목에도 자막 세그먼트 저장 및 IndexedDB 저장
         const updatedList = playlist.map(p => {
           if (p.name === videoTitle || p.url === videoSrc) {
             savePlaylistItemDB({ name: p.name, segments: parsed });
@@ -456,7 +535,7 @@ export default function Home() {
           }
           return p;
         });
-        setPlaylist(updatedList);
+        syncPlaylistStorage(updatedList);
         
         alert(`자막 파일(${fileName})에서 총 ${parsed.length}개 문장을 성공적으로 불러왔습니다!`);
       } else {
