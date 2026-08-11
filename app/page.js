@@ -407,7 +407,7 @@ export default function Home() {
     try {
       const dataView = new DataView(arrayBuffer);
       const len = arrayBuffer.byteLength;
-      const extracted = [];
+      const timestamps = [];
 
       for (let i = 0; i <= len - 8; i += 2) {
         try {
@@ -415,23 +415,37 @@ export default function Home() {
           const endSec = dataView.getFloat32(i + 4, true);
 
           if (startSec >= 0.1 && endSec > startSec + 0.3 && endSec <= startSec + 45 && endSec < 3600) {
-            const isDup = extracted.some(seg => Math.abs(seg.start - startSec) < 0.1);
+            const isDup = timestamps.some(t => Math.abs(t.start - startSec) < 0.1);
             if (!isDup) {
-              const idx = extracted.length + 1;
-              extracted.push({
-                id: idx,
+              timestamps.push({
                 start: Number(startSec.toFixed(2)),
-                end: Number(endSec.toFixed(2)),
-                text: `대사 ${idx} (${startSec.toFixed(1)}s - ${endSec.toFixed(1)}s)`,
-                translation: `문장 ${idx} (${startSec.toFixed(1)}초 ~ ${endSec.toFixed(1)}초)`
+                end: Number(endSec.toFixed(2))
               });
             }
           }
         } catch (e) {}
       }
 
-      extracted.sort((a, b) => a.start - b.start);
-      return extracted.map((item, idx) => ({ ...item, id: idx + 1 }));
+      // 1. Sort by start timestamp ascending FIRST
+      timestamps.sort((a, b) => a.start - b.start);
+
+      // 2. Generate sequential 1, 2, 3... sentence labels in chronological order
+      return timestamps.map((t, idx) => {
+        const num = idx + 1;
+        const formatSecStr = (s) => {
+          const m = Math.floor(s / 60);
+          const sec = (s % 60).toFixed(1);
+          return `${m > 0 ? m + ':' : ''}${sec.padStart(4, '0')}초`;
+        };
+        return {
+          id: num,
+          start: t.start,
+          end: t.end,
+          text: `Sentence ${num} (${formatSecStr(t.start)} ~ ${formatSecStr(t.end)})`,
+          translation: `문장 ${num} (${formatSecStr(t.start)} ~ ${formatSecStr(t.end)})`,
+          memo: `타임스탬프 ${formatSecStr(t.start)}`
+        };
+      });
     } catch (e) {
       return [];
     }
