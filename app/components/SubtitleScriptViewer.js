@@ -37,11 +37,15 @@ export default function SubtitleScriptViewer({
   }, [currentSegmentIndex]);
 
   const getFontSizePx = () => {
-    if (typeof fontSize === 'number') return `${fontSize * 1.3}px`;
+    const scale = (typeof playerSizePercent === 'number' ? playerSizePercent : 100) / 100;
+    if (typeof fontSize === 'number') {
+      const base = fontSize * 0.9;
+      return `${Math.max(10, Math.round(base * scale))}px`;
+    }
     switch (fontSize) {
-      case 'small': return '16px';
-      case 'large': return '28px';
-      default: return '20px';
+      case 'small': return `${Math.round(11 * scale)}px`;
+      case 'large': return `${Math.round(20 * scale)}px`;
+      default: return `${Math.round(14 * scale)}px`;
     }
   };
 
@@ -176,6 +180,9 @@ export default function SubtitleScriptViewer({
                 className={`nb-script-item ${isActive ? 'active-sentence' : ''}`}
                 onClick={() => onSelectSegment(idx)} // Click text area -> Play Video Immediately!
                 style={{
+                  padding: '6px 10px',
+                  marginBottom: 5,
+                  gap: 8,
                   background: isActive ? '#ecfdf5' : isChecked ? '#f0fdf4' : '#f8fafc',
                   border: isActive
                     ? '2px solid #10b981'

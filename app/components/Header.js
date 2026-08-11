@@ -59,29 +59,29 @@ export default function Header({
   return (
     <>
       <header className="app-header" style={{
-        padding: '12px 28px',
-        height: '76px',
+        padding: '8px 20px',
+        height: '54px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 20,
+        justify: 'space-between',
+        gap: 16,
         background: 'rgba(15, 23, 42, 0.85)',
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
       }}>
         {/* Zone 1: Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} title="NativeBOX AI Player v1.0">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} title="NativeBOX AI Player v1.0">
             <div style={{
               background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-              width: 44, height: 44, borderRadius: 12,
+              width: 32, height: 32, borderRadius: 8,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 16px rgba(59, 130, 246, 0.4)'
+              boxShadow: '0 0 12px rgba(59, 130, 246, 0.4)'
             }}>
-              <Sparkles size={24} color="#fff" />
+              <Sparkles size={17} color="#fff" />
             </div>
-            <span style={{ fontSize: 22, fontWeight: '800', letterSpacing: '-0.3px', color: '#f8fafc' }}>
+            <span style={{ fontSize: 15, fontWeight: '800', letterSpacing: '-0.3px', color: '#f8fafc' }}>
               NativeBOX <span style={{ color: '#38bdf8' }}>AI</span>
             </span>
           </div>
@@ -90,49 +90,49 @@ export default function Header({
         {/* Zone 2: Mode Navigation Tabs */}
         {setActiveTab && (
           <div style={{
-            display: 'flex', gap: 8, alignItems: 'center',
-            background: 'rgba(0,0,0,0.4)', padding: '6px',
-            borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)'
+            display: 'flex', gap: 6, alignItems: 'center',
+            background: 'rgba(0,0,0,0.4)', padding: '4px',
+            borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)'
           }}>
             <button
               className={`nb-bevel-btn ${activeTab === 'nativebox' ? 'active-green' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 15, fontWeight: '700', borderRadius: 8 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', fontSize: 11, fontWeight: '700', borderRadius: 6 }}
               onClick={() => setActiveTab('nativebox')}
               title="NativeBOX 메인 레트로 플레이어 뷰"
             >
-              <Sliders size={18} />
+              <Sliders size={13} />
               <span>레트로 스킨 뷰</span>
             </button>
             <button
               className={`nb-bevel-btn ${activeTab === 'editor' ? 'active-blue' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 15, fontWeight: '700', borderRadius: 8 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', fontSize: 11, fontWeight: '700', borderRadius: 6 }}
               onClick={() => setActiveTab('editor')}
               title="타임라인 대본 에디터 뷰"
             >
-              <ListFilter size={18} />
+              <ListFilter size={13} />
               <span>자막 에디터</span>
             </button>
             <button
               className={`nb-bevel-btn ${activeTab === 'ai' ? 'pressed' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', fontSize: 15, fontWeight: '700', borderRadius: 8 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', fontSize: 11, fontWeight: '700', borderRadius: 6 }}
               onClick={() => setActiveTab('ai')}
               title="AI 음성인식 대사 파싱 도구"
             >
-              <Cpu size={18} />
+              <Cpu size={13} />
               <span>AI 문장 분할기</span>
             </button>
           </div>
         )}
 
         {/* Zone 3: Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
 
           {/* ✅ Unified Load Button */}
           <button
             className={`nb-bevel-btn ${showLoader ? 'active-green' : ''}`}
             style={{
-              padding: '8px 18px', fontSize: 14, fontWeight: 'bold',
-              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '5px 12px', fontSize: 10, fontWeight: 'bold',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
               background: showLoader ? 'rgba(16,185,129,0.25)' : 'rgba(59,130,246,0.18)',
               borderColor: showLoader ? '#10b981' : 'rgba(59,130,246,0.5)',
               color: showLoader ? '#34d399' : '#93c5fd',
@@ -140,7 +140,7 @@ export default function Header({
             onClick={() => setShowLoader(!showLoader)}
             title="영상 + 자막 동시 로드 (같은 이름의 파일 쌍으로 보관 권장)"
           >
-            <Film size={18} />
+            <Film size={13} />
             <span>🎬 영상+자막 로드</span>
           </button>
 
@@ -148,10 +148,10 @@ export default function Header({
           <button
             className="nb-bevel-btn active-blue"
             onClick={onExportClick}
-            style={{ padding: '8px 18px', fontSize: 14, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            style={{ padding: '5px 12px', fontSize: 10, fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: 5 }}
             title="자막 내보내기"
           >
-            <Download size={18} />
+            <Download size={13} />
             <span>내보내기</span>
           </button>
 
@@ -159,10 +159,10 @@ export default function Header({
           <button
             className="nb-bevel-btn"
             onClick={onOpenGuide}
-            style={{ padding: '8px 12px' }}
+            style={{ padding: '5px 8px' }}
             title="사용법 안내"
           >
-            <HelpCircle size={20} color="#94a3b8" />
+            <HelpCircle size={14} color="#94a3b8" />
           </button>
         </div>
       </header>

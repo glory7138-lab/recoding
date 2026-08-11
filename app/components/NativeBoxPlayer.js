@@ -28,6 +28,8 @@ export default function NativeBoxPlayer({
   checkedIndices = []
 }) {
   const videoRef = useRef(null);
+  const videoContainerRef = useRef(null);
+  const [videoContainerHeight, setVideoContainerHeight] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(104);
@@ -37,6 +39,27 @@ export default function NativeBoxPlayer({
   const [repeatCurrentCount, setRepeatCurrentCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [playbackRate, setPlaybackRateState] = useState(1.0); // '0.5' ~ '3.0'
+
+  // Dynamic ResizeObserver to sync right side panel height 1:1 with video container height
+  useEffect(() => {
+    if (!videoContainerRef.current) return;
+    const updateHeight = () => {
+      if (videoContainerRef.current) {
+        const h = videoContainerRef.current.offsetHeight;
+        if (h > 0) setVideoContainerHeight(h);
+      }
+    };
+
+    updateHeight();
+    const ro = new ResizeObserver(() => {
+      updateHeight();
+    });
+    ro.observe(videoContainerRef.current);
+
+    return () => {
+      ro.disconnect();
+    };
+  }, [playerSizePercent, isSidebarOpen]);
 
   // Load saved repeat count, sidebar state, and playback rate from localStorage on mount
   useEffect(() => {
@@ -326,10 +349,10 @@ export default function NativeBoxPlayer({
 
   return (
     <div className="nb-panel-outset" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* 1. Top Header Bar (Doubled Font & Element Sizes) */}
-      <div className="nb-header-bar" style={{ minHeight: 48, padding: '8px 14px' }}>
-        <div className="nb-header-title" style={{ gap: 10, display: 'flex', alignItems: 'center' }}>
-          <span className="nb-brand-name" style={{ fontSize: 20, fontWeight: '800' }}>NativeBOX AI Player</span>
+      {/* 1. Top Header Bar (70% Scaled Font & Element Sizes) */}
+      <div className="nb-header-bar" style={{ minHeight: 34, padding: '4px 8px' }}>
+        <div className="nb-header-title" style={{ gap: 8, display: 'flex', alignItems: 'center' }}>
+          <span className="nb-brand-name" style={{ fontSize: 14, fontWeight: '800' }}>NativeBOX AI Player</span>
           
           {/* 🌐 Language Initial Icon Badge (ENG / THA / KOR / JPN / CHN) */}
           <button
@@ -337,28 +360,28 @@ export default function NativeBoxPlayer({
             style={{
               background: getLangBadgeStyle(currentLang).bg,
               color: '#ffffff',
-              border: '1.5px solid rgba(255, 255, 255, 0.4)',
-              borderRadius: 7,
-              padding: '3px 9px',
-              fontSize: 13,
+              border: '1px solid rgba(255, 255, 255, 0.4)',
+              borderRadius: 5,
+              padding: '2px 7px',
+              fontSize: 9,
               fontWeight: '800',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 5,
-              boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+              gap: 4,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
               transition: 'all 0.2s ease'
             }}
             title="클릭 시 언어 표시 수동 전환 (ENG 영어 회화 | THA 태국어 회화 | KOR 한국어 | JPN 일본어 | CHN 중국어)"
           >
-            <span style={{ fontSize: 14 }}>{getLangBadgeStyle(currentLang).flag}</span>
-            <span style={{ letterSpacing: '0.5px' }}>[{getLangBadgeStyle(currentLang).code}]</span>
-            <span style={{ fontSize: 11, opacity: 0.9, fontWeight: '700' }}>{getLangBadgeStyle(currentLang).name}</span>
+            <span style={{ fontSize: 11 }}>{getLangBadgeStyle(currentLang).flag}</span>
+            <span style={{ letterSpacing: '0.3px' }}>[{getLangBadgeStyle(currentLang).code}]</span>
+            <span style={{ fontSize: 8, opacity: 0.9, fontWeight: '700' }}>{getLangBadgeStyle(currentLang).name}</span>
           </button>
 
-          <span className="nb-file-title" style={{ fontSize: 16, padding: '4px 12px' }}>{videoTitle || '[null]'}</span>
+          <span className="nb-file-title" style={{ fontSize: 11, padding: '3px 8px' }}>{videoTitle || '[null]'}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             className={`nb-bevel-btn ${isSidebarOpen ? 'active-green' : ''}`}
             onClick={() => {
@@ -366,17 +389,17 @@ export default function NativeBoxPlayer({
               setIsSidebarOpen(next);
               try { localStorage.setItem('nb_sidebar_open', String(next)); } catch (e) {}
             }}
-            style={{ padding: '8px 16px', fontSize: 16, fontWeight: '800' }}
+            style={{ padding: '5px 10px', fontSize: 11, fontWeight: '800' }}
             title={isSidebarOpen ? "우측 제어창/목록 접기 (영상을 100% 가득 찬 상태로 크게 보기)" : "우측 제어창/목록 펼치기"}
           >
             {isSidebarOpen ? '▶ 제어창/목록 접기' : '◀ 제어창/목록 펼치기'}
           </button>
-          <span style={{ fontFamily: 'monospace', color: '#10b981', background: 'rgba(0,0,0,0.6)', padding: '6px 14px', borderRadius: 6, fontSize: 18, fontWeight: '700' }}>
+          <span style={{ fontFamily: 'monospace', color: '#10b981', background: 'rgba(0,0,0,0.6)', padding: '4px 8px', borderRadius: 5, fontSize: 13, fontWeight: '700' }}>
             {formatTimeStr(currentTime)} / {formatTimeStr(duration)}
           </span>
-          <div className="nb-window-controls" style={{ gap: 6 }}>
-            <button className="nb-win-btn" style={{ width: 26, height: 26, fontSize: 16 }}>-</button>
-            <button className="nb-win-btn" style={{ width: 26, height: 26, fontSize: 16 }}>×</button>
+          <div className="nb-window-controls" style={{ gap: 4 }}>
+            <button className="nb-win-btn" style={{ width: 20, height: 20, fontSize: 11 }}>-</button>
+            <button className="nb-win-btn" style={{ width: 20, height: 20, fontSize: 11 }}>×</button>
           </div>
         </div>
       </div>
@@ -385,20 +408,23 @@ export default function NativeBoxPlayer({
       <div style={{ display: 'grid', gridTemplateColumns: isSidebarOpen ? '1fr 435px' : '1fr', gap: 12, alignItems: 'stretch', transition: 'all 0.3s ease' }}>
 
         {/* Center: Video Screen Display */}
-        <div style={{
-          background: '#000',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: 12,
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justify: 'center',
-          overflow: 'hidden',
-          aspectRatio: '16/9',
-          width: '100%',
-          maxHeight: isSidebarOpen ? Math.round(440 * (playerSizePercent / 100)) : Math.round(560 * (playerSizePercent / 100)),
-          boxShadow: '0 12px 36px rgba(0,0,0,0.6)'
-        }}>
+        <div
+          ref={videoContainerRef}
+          style={{
+            background: '#000',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 12,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center',
+            overflow: 'hidden',
+            aspectRatio: '16/9',
+            width: '100%',
+            maxHeight: isSidebarOpen ? Math.round(440 * (playerSizePercent / 100)) : Math.round(560 * (playerSizePercent / 100)),
+            boxShadow: '0 12px 36px rgba(0,0,0,0.6)'
+          }}
+        >
           <video
             ref={videoRef}
             src={videoSrc || '/sample.mp4'}
@@ -464,38 +490,50 @@ export default function NativeBoxPlayer({
           )}
         </div>
 
-        {/* Right Side: Embedded LIST (Playlist) & Modern Player Controls (Collapsible - 435px Wide & 1.5x Font Sizes) */}
+        {/* Right Side: Embedded LIST (Playlist) & Modern Player Controls (Dynamic 1:1 Height Binding) */}
         {isSidebarOpen && (
-          <div className="nb-panel-inset" style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'space-between', padding: 12 }}>
+          <div className="nb-panel-inset" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            justify: 'space-between',
+            padding: '8px 10px',
+            height: videoContainerHeight ? `${videoContainerHeight}px` : '100%',
+            maxHeight: videoContainerHeight ? `${videoContainerHeight}px` : '100%',
+            overflowY: 'auto',
+            boxSizing: 'border-box'
+          }}>
             {/* Scrollable Playlist Header */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '5px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 auto', minHeight: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: 15, fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <List size={17} color="#10b981" />
+                <div style={{ fontSize: 13, fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <List size={15} color="#10b981" />
                   <span>강의 / 재생 목록</span>
-                  <span style={{ fontSize: 12, color: '#10b981', background: 'rgba(16,185,129,0.2)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                  <span style={{ fontSize: 11, color: '#10b981', background: 'rgba(16,185,129,0.2)', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
                     {playlist.length}
                   </span>
                 </div>
                 <button
                   className="nb-bevel-btn active-green"
-                  style={{ padding: '3px 8px', fontSize: 13, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 4 }}
+                  style={{ padding: '2px 7px', fontSize: 12, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 3 }}
                   onClick={onAddFile}
                   title="새 파일 추가"
                 >
-                  <Plus size={14} />
+                  <Plus size={13} />
                   <span>추가</span>
                 </button>
               </div>
 
-              {/* Scrollable Playlist Item List Box (Height reduced by ~25%) */}
+              {/* Scrollable Playlist Item List Box */}
               <div style={{
                 background: 'rgba(15, 23, 42, 0.9)',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
                 borderRadius: 6,
-                height: Math.max(78, Math.round(92 * (playerSizePercent / 100))),
+                flex: 1,
+                minHeight: 80,
+                maxHeight: 260,
                 overflowY: 'auto',
-                padding: 4
+                padding: 3
               }}>
                 {playlist && playlist.length > 0 ? (
                   playlist.map((item, idx) => {
@@ -507,10 +545,10 @@ export default function NativeBoxPlayer({
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 8,
-                          padding: '5px 8px',
-                          borderRadius: 5,
-                          marginBottom: 3,
+                          gap: 6,
+                          padding: '4px 6px',
+                          borderRadius: 4,
+                          marginBottom: 2,
                           background: isSelected ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
                           border: isSelected ? '1.5px solid #10b981' : '1px solid transparent',
                           cursor: 'pointer',
@@ -518,14 +556,14 @@ export default function NativeBoxPlayer({
                         }}
                       >
                         <div style={{
-                          width: 9,
-                          height: 9,
+                          width: 8,
+                          height: 8,
                           borderRadius: '50%',
                           background: isSelected ? '#10b981' : '#64748b',
                           flexShrink: 0
                         }} />
                         <span style={{
-                          fontSize: 14,
+                          fontSize: 13,
                           color: isSelected ? '#34d399' : '#e2e8f0',
                           fontWeight: isSelected ? 'bold' : '500',
                           flex: 1,
@@ -536,7 +574,7 @@ export default function NativeBoxPlayer({
                           {item.name}
                         </span>
                         {item.segmentCount && (
-                          <span style={{ fontSize: 11, color: '#94a3b8', background: 'rgba(255,255,255,0.08)', padding: '1px 5px', borderRadius: 4, fontWeight: 600 }}>
+                          <span style={{ fontSize: 10, color: '#94a3b8', background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: 4, fontWeight: 600 }}>
                             {item.segmentCount}문장
                           </span>
                         )}
@@ -557,97 +595,97 @@ export default function NativeBoxPlayer({
                             }}
                             title="삭제"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         )}
                       </div>
                     );
                   })
                 ) : (
-                  <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: 8 }}>목록 없음</div>
+                  <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center', padding: 6 }}>목록 없음</div>
                 )}
               </div>
             </div>
 
             {/* Screen Size Slider */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 15, fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Monitor size={17} color="#10b981" />
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', padding: '5px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Monitor size={15} color="#10b981" />
                   <span>화면 배율 (Screen Size)</span>
                 </span>
-                <span style={{ fontSize: 15, fontWeight: '800', color: '#10b981' }}>{playerSizePercent}%</span>
+                <span style={{ fontSize: 13, fontWeight: '800', color: '#10b981' }}>{playerSizePercent}%</span>
               </div>
-              <input
-                type="range"
-                min="60"
-                max="140"
-                step="5"
-                value={playerSizePercent}
-                onChange={(e) => setPlayerSizePercent(Number(e.target.value))}
-                style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer', height: 6, marginBottom: 6 }}
-                title="화면 크기 조절 슬라이더"
-              />
-              <div style={{ display: 'flex', gap: 5 }}>
-                <button
-                  className={`nb-bevel-btn ${playerSizePercent === 70 ? 'active-green' : ''}`}
-                  style={{ flex: 1, padding: '6px 0', fontSize: 12, fontWeight: 'bold' }}
-                  onClick={() => setPlayerSizePercent(70)}
-                >
-                  70% (소)
-                </button>
-                <button
-                  className={`nb-bevel-btn ${playerSizePercent === 100 ? 'active-green' : ''}`}
-                  style={{ flex: 1, padding: '6px 0', fontSize: 12, fontWeight: 'bold' }}
-                  onClick={() => setPlayerSizePercent(100)}
-                >
-                  100%
-                </button>
-                <button
-                  className={`nb-bevel-btn ${playerSizePercent === 120 ? 'active-green' : ''}`}
-                  style={{ flex: 1, padding: '6px 0', fontSize: 12, fontWeight: 'bold' }}
-                  onClick={() => setPlayerSizePercent(120)}
-                >
-                  120% (대)
-                </button>
-                <button
-                  className={`nb-bevel-btn ${playerSizePercent === 140 ? 'active-green' : ''}`}
-                  style={{ flex: 1, padding: '6px 0', fontSize: 12, fontWeight: 'bold' }}
-                  onClick={() => setPlayerSizePercent(140)}
-                >
-                  140%
-                </button>
+              
+              {/* Horizontal Slider + Buttons to the Right (70% Scaled Compact Row) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="range"
+                  min="60"
+                  max="140"
+                  step="10"
+                  value={playerSizePercent}
+                  onChange={(e) => setPlayerSizePercent(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: '#10b981', cursor: 'pointer', height: 5 }}
+                  title="화면 크기 조절 슬라이더 (60%~140%, 10% 단위)"
+                />
+                <div style={{ display: 'flex', gap: 3, alignItems: 'center', flexShrink: 0 }}>
+                  <button
+                    className="nb-bevel-btn"
+                    style={{ padding: '2px 6px', fontSize: 10, fontWeight: 'bold' }}
+                    onClick={() => setPlayerSizePercent(Math.max(60, playerSizePercent - 10))}
+                    title="화면 배율 10% 축소 (-10%)"
+                  >
+                    -10%
+                  </button>
+                  <button
+                    className={`nb-bevel-btn ${playerSizePercent === 100 ? 'active-green' : ''}`}
+                    style={{ padding: '2px 6px', fontSize: 10, fontWeight: 'bold' }}
+                    onClick={() => setPlayerSizePercent(100)}
+                    title="100% 기본 화면 배율 복원"
+                  >
+                    100%
+                  </button>
+                  <button
+                    className="nb-bevel-btn"
+                    style={{ padding: '2px 6px', fontSize: 10, fontWeight: 'bold' }}
+                    onClick={() => setPlayerSizePercent(Math.min(140, playerSizePercent + 10))}
+                    title="화면 배율 10% 확대 (+10%)"
+                  >
+                    +10%
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Caption Language Mode */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 15, color: '#f8fafc', fontWeight: 800 }}>Caption Language</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 13, color: '#f8fafc', fontWeight: 800 }}>Caption Language</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
                 <button
                   className={`nb-bevel-btn ${captionMode === 'X' ? 'active-green' : ''}`}
-                  style={{ fontSize: 13, padding: '9px 0', fontWeight: '800' }}
+                  style={{ fontSize: 12, padding: '5px 0', fontWeight: '800' }}
                   onClick={() => setCaptionMode('X')}
                 >
                   OFF
                 </button>
                 <button
                   className={`nb-bevel-btn ${captionMode === 'E' ? 'active-green' : ''}`}
-                  style={{ fontSize: 13, padding: '9px 0', fontWeight: '800' }}
+                  style={{ fontSize: 12, padding: '5px 0', fontWeight: '800' }}
                   onClick={() => setCaptionMode('E')}
                 >
                   ENG
                 </button>
                 <button
                   className={`nb-bevel-btn ${captionMode === 'K' ? 'active-green' : ''}`}
-                  style={{ fontSize: 13, padding: '9px 0', fontWeight: '800' }}
+                  style={{ fontSize: 12, padding: '5px 0', fontWeight: '800' }}
                   onClick={() => setCaptionMode('K')}
                 >
                   KOR
                 </button>
                 <button
                   className={`nb-bevel-btn ${captionMode === 'EK' ? 'active-blue' : ''}`}
-                  style={{ fontSize: 13, padding: '9px 0', fontWeight: '800' }}
+                  style={{ fontSize: 12, padding: '5px 0', fontWeight: '800' }}
                   onClick={() => setCaptionMode('EK')}
                 >
                   E/K
@@ -655,29 +693,29 @@ export default function NativeBoxPlayer({
               </div>
             </div>
 
-            {/* 🔁 Repeat Controls & Repeat Iteration Slider Card (1.5x Scale) */}
+            {/* 🔁 Repeat Controls & Repeat Iteration Slider Card */}
             <div style={{
               background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(16, 185, 129, 0.18) 100%)',
-              padding: '10px 12px',
+              padding: '6px 8px',
               borderRadius: 8,
               border: '1.5px solid rgba(16, 185, 129, 0.4)',
               boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 8
+              gap: 5
             }}>
               {/* Top Row: Sentence Nav & Main Repeat Button */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button className="nb-bevel-btn" style={{ padding: '8px 14px' }} onClick={jumpPrev} title="이전 문장">
-                  <ChevronLeft size={18} />
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                <button className="nb-bevel-btn" style={{ padding: '5px 10px' }} onClick={jumpPrev} title="이전 문장">
+                  <ChevronLeft size={16} />
                 </button>
-                <button className="nb-bevel-btn" style={{ padding: '8px 14px' }} onClick={jumpNext} title="다음 문장">
-                  <ChevronRight size={18} />
+                <button className="nb-bevel-btn" style={{ padding: '5px 10px' }} onClick={jumpNext} title="다음 문장">
+                  <ChevronRight size={16} />
                 </button>
 
                 <button
                   className={`nb-bevel-btn ${isRepeatSentence ? 'active-green' : ''}`}
-                  style={{ flex: 1, padding: '9px 0', fontSize: 14, fontWeight: '800' }}
+                  style={{ flex: 1, padding: '6px 0', fontSize: 13, fontWeight: '800' }}
                   onClick={() => {
                     const nextState = !isRepeatSentence;
                     setIsRepeatSentence(nextState);
@@ -710,12 +748,12 @@ export default function NativeBoxPlayer({
               </div>
 
               {/* Bottom Row: Smooth Horizontal Repeat Count Slider */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 12, fontWeight: '800', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ color: '#10b981' }}>🔁</span> 반복 횟수 조절 (1회~10회, ∞)
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: '800', color: '#10b981', background: 'rgba(16,185,129,0.25)', padding: '2px 8px', borderRadius: 5 }}>
+                  <span style={{ fontSize: 12, fontWeight: '800', color: '#10b981', background: 'rgba(16,185,129,0.25)', padding: '1px 6px', borderRadius: 4 }}>
                     {repeatTargetCount === 'infinite' ? '∞ 무한' : `${repeatTargetCount}회`}
                   </span>
                 </div>
@@ -731,10 +769,10 @@ export default function NativeBoxPlayer({
                     setRepeatTargetCount(target);
                     setRepeatCurrentCount(0);
                   }}
-                  style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer', height: 6 }}
+                  style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer', height: 5 }}
                   title="반복 횟수를 슬라이더로 조절하세요 (1회~10회 또는 ∞ 무한)"
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#e2e8f0', padding: '0 2px', fontWeight: '700' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#e2e8f0', padding: '0 2px', fontWeight: '700' }}>
                   <span>1회</span>
                   <span>3회</span>
                   <span>5회</span>
