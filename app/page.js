@@ -527,14 +527,17 @@ export default function Home() {
 
   const handleDeletePlaylistItem = (targetId) => {
     const targetItem = playlist.find(p => p.id === targetId || p.name === targetId);
+    if (!targetItem) return;
+
+    const confirmDelete = window.confirm(`"${targetItem.name}" 항목을 재생목록에서 제거하시겠습니까?\n\n(내 PC의 원본 동영상/자막 파일은 삭제되지 않으며 목록에서만 제거됩니다.)`);
+    if (!confirmDelete) return;
+
     const nextList = playlist.filter(p => (p.id !== targetId && p.name !== targetId));
     syncPlaylistStorage(nextList);
-    if (targetItem) {
-      deletePlaylistItemDB(targetItem.name);
-    }
+    deletePlaylistItemDB(targetItem.name);
     
     // 삭제된 항목이 현재 재생 중인 영상인 경우 다음 항목을 선택하고 자막 갱신
-    if (targetItem && (targetItem.name === videoTitle || targetItem.url === videoSrc)) {
+    if (targetItem.name === videoTitle || targetItem.url === videoSrc) {
       if (nextList[0]) {
         handleSelectPlaylistItem(nextList[0]);
       } else {
