@@ -349,22 +349,81 @@ export default function Home() {
     setCurrentSegmentIndex(0);
   };
 
+  const readTextFileWithEncoding = async (file) => {
+    if (!file) return '';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      if (bytes.length === 0) return '';
+
+      // 1. UTF-16 LE BOM (FF FE)
+      if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
+        return new TextDecoder('utf-16le').decode(arrayBuffer);
+      }
+      // 2. UTF-16 BE BOM (FE FF)
+      if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
+        return new TextDecoder('utf-16be').decode(arrayBuffer);
+      }
+      // 3. UTF-8 BOM (EF BB BF)
+      if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+        return new TextDecoder('utf-8').decode(arrayBuffer.slice(3));
+      }
+
+      // 4. Auto-detect UTF-16 LE/BE without BOM (alternating zero bytes)
+      let zeroEven = 0, zeroOdd = 0;
+      const checkLen = Math.min(bytes.length, 500);
+      for (let i = 0; i < checkLen; i += 2) {
+        if (bytes[i] === 0) zeroEven++;
+        if (bytes[i + 1] === 0) zeroOdd++;
+      }
+      if (zeroOdd > checkLen / 4) {
+        return new TextDecoder('utf-16le').decode(arrayBuffer);
+      }
+      if (zeroEven > checkLen / 4) {
+        return new TextDecoder('utf-16be').decode(arrayBuffer);
+      }
+
+      // 5. Try UTF-8 first
+      let text = new TextDecoder('utf-8', { fatal: false }).decode(arrayBuffer);
+
+      // 6. If UTF-8 produced replacement characters (\uFFFD), try EUC-KR / CP949
+      if (text.includes('\uFFFD')) {
+        try {
+          const eucKrText = new TextDecoder('euc-kr').decode(arrayBuffer);
+          if (!eucKrText.includes('\uFFFD')) {
+            text = eucKrText;
+          }
+        } catch (e) {}
+      }
+
+      return text;
+    } catch (e) {
+      try { return await file.text(); } catch (err) { return ''; }
+    }
+  };
+
   const parseSubtitleFileContent = (fileContent, fileName) => {
     let parsed = [];
     const trimmed = (fileContent || '').trim();
     const lowerName = (fileName || '').toLowerCase();
     
     // 1. JSON / NBC Format
-    if (lowerName.endsWith('.json') || lowerName.endsWith('.nbc') || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    if (lowerName.endsWith('.json') || lowerName.endsWith('.nbc') || (trimmed.startsWith('{') || trimmed.startsWith('['))) {
       try {
-        const rawJson = JSON.parse(fileContent);
+        let rawJson = JSON.parse(fileContent);
+        if (!Array.isArray(rawJson) && rawJson && typeof rawJson === 'object') {
+          if (Array.isArray(rawJson.segments)) rawJson = rawJson.segments;
+          else if (Array.isArray(rawJson.items)) rawJson = rawJson.items;
+          else if (Array.isArray(rawJson.data)) rawJson = rawJson.data;
+          else if (Array.isArray(rawJson.subtitles)) rawJson = rawJson.subtitles;
+        }
         if (Array.isArray(rawJson)) {
           parsed = rawJson.map((item, idx) => ({
             id: item.id || idx + 1,
             start: typeof item.start === 'number' ? item.start : parseFloat(item.start) || 0,
             end: typeof item.end === 'number' ? item.end : parseFloat(item.end) || 0,
-            text: item.text || item.english || '',
-            translation: item.translation || item.korean || '',
+            text: item.text || item.english || item.eng || '',
+            translation: item.translation || item.korean || item.kor || '',
             memo: item.memo || ''
           }));
         }
@@ -439,7 +498,7 @@ export default function Home() {
       let parsedSegments = [];
       if (matchedSubFile) {
         try {
-          const subText = await matchedSubFile.text();
+          const subText = await readTextFileWithEncoding(matchedSubFile);
           parsedSegments = parseSubtitleFileContent(subText, matchedSubFile.name);
         } catch (e) {}
       }
@@ -470,7 +529,7 @@ export default function Home() {
     if (mediaFiles.length === 0 && subFiles.length > 0) {
       const subFile = subFiles[0];
       try {
-        const subText = await subFile.text();
+        const subText = await readTextFileWithEncoding(subFile);
         const parsed = parseSubtitleFileContent(subText, subFile.name);
         if (parsed.length > 0) {
           setSegments(parsed);
