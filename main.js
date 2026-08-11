@@ -25,6 +25,8 @@ const mimeTypes = {
   '.bin': 'application/octet-stream',
 };
 
+const FIXED_PORT = 39754;
+
 function startInternalServer() {
   return new Promise((resolve) => {
     const outDir = path.join(__dirname, 'out');
@@ -51,10 +53,22 @@ function startInternalServer() {
       });
     });
 
-    server.listen(0, '127.0.0.1', () => {
-      const port = server.address().port;
-      resolve(port);
-    });
+    const listenOnPort = (targetPort) => {
+      const srv = server.listen(targetPort, '127.0.0.1', () => {
+        resolve(targetPort);
+      });
+      srv.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          listenOnPort(targetPort + 1);
+        } else {
+          server.listen(0, '127.0.0.1', () => {
+            resolve(server.address().port);
+          });
+        }
+      });
+    };
+
+    listenOnPort(FIXED_PORT);
   });
 }
 
